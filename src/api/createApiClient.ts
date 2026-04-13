@@ -1,5 +1,19 @@
-import { context, trace, propagation, SpanStatusCode, SpanKind } from '@opentelemetry/api';
 import { parseErrorMessage } from '../errors/parseErrorMessage';
+
+// OpenTelemetry is optional — tracing is a no-op if not installed
+let otel: {
+  context: any;
+  trace: any;
+  propagation: any;
+  SpanStatusCode: any;
+  SpanKind: any;
+} | null = null;
+
+try {
+  otel = require('@opentelemetry/api');
+} catch {
+  // OTEL not available — tracing disabled
+}
 
 export class SessionExpiredError extends Error {
   constructor(message = 'Session expired. Please log in again.') {
@@ -60,11 +74,16 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   }
 
   async function tracedFetch(url: string, options: RequestInit): Promise<Response> {
-    const tracer = trace.getTracer(tracerName);
+    if (!otel) {
+      return fetch(url, options);
+    }
+
+    const { context: ctx, trace: tr, propagation: prop, SpanKind: SK, SpanStatusCode: SSC } = otel;
+    const tracer = tr.getTracer(tracerName);
     const serviceName = detectServiceName(url);
 
     const span = tracer.startSpan(`HTTP ${options.method || 'GET'} ${url}`, {
-      kind: SpanKind.CLIENT,
+      kind: SK.CLIENT,
       attributes: {
         'http.url': url,
         'http.method': options.method,
@@ -72,10 +91,10 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       },
     });
 
-    return context.with(trace.setSpan(context.active(), span), async () => {
+    return ctx.with(tr.setSpan(ctx.active(), span), async () => {
       try {
         const carrier: Record<string, string> = {};
-        propagation.inject(context.active(), carrier);
+        prop.inject(ctx.active(), carrier);
 
         const headersWithTrace = {
           ...(options.headers as Record<string, string>),
@@ -91,7 +110,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
         return response;
       } catch (error) {
         span.recordException(error as Error);
-        span.setStatus({ code: SpanStatusCode.ERROR });
+        span.setStatus({ code: SSC.ERROR });
         throw error;
       } finally {
         span.end();
