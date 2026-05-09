@@ -22,6 +22,28 @@ export class SessionExpiredError extends Error {
   }
 }
 
+/**
+ * Lightweight tracing hooks. Pass these in to wire any OTel-style tracer
+ * (the consumer apps each have their own minimal `lib/telemetry.ts` that
+ * batches + posts spans to a collector). When omitted, the client just
+ * calls fetch() with no tracing — keeps common-mobile from depending on
+ * @opentelemetry/api or any other tracer SDK.
+ */
+export interface TraceHooks {
+  /** Called before fetch starts. Return value is opaque, passed back to onTraceEnd. */
+  onTraceStart: (method: string, url: string) => unknown;
+  /** Called after fetch resolves (success or error). */
+  onTraceEnd: (
+    span: unknown,
+    method: string,
+    url: string,
+    statusCode: number,
+    error?: string,
+  ) => void;
+  /** Optional traceparent header value to propagate the span to the backend. */
+  getTraceparent?: (span: unknown) => string | undefined;
+}
+
 export interface ApiClientConfig {
   /** Base URL for the main API (e.g. https://api.devpartaudit.fr/app/partaudit) */
   baseUrl: string;
@@ -31,8 +53,10 @@ export interface ApiClientConfig {
   onSessionExpired: () => void;
   /** Called on API errors to display feedback to the user */
   onError: (error: unknown) => void;
-  /** Optional tracer name for OpenTelemetry spans */
+  /** Optional tracer name for OpenTelemetry spans (legacy @opentelemetry/api path) */
   tracerName?: string;
+  /** Optional lightweight trace hooks (preferred over tracerName) */
+  trace?: TraceHooks;
   /** Optional additional base URLs for other services */
   serviceUrls?: {
     notifications?: string;
@@ -63,6 +87,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     onSessionExpired,
     onError,
     tracerName = 'partaudit-mobile',
+    trace,
     serviceUrls = {},
   } = config;
 
@@ -74,6 +99,29 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   }
 
   async function tracedFetch(url: string, options: RequestInit): Promise<Response> {
+    // Preferred path: lightweight TraceHooks (no @opentelemetry/api dep).
+    if (trace) {
+      const method = options.method || 'GET';
+      const span = trace.onTraceStart(method, url);
+
+      // Optional W3C Trace Context propagation — backend services correlate
+      // mobile spans with their own server-side spans through this header.
+      const traceparent = trace.getTraceparent?.(span);
+      const headersWithTrace = traceparent
+        ? { ...(options.headers as Record<string, string>), traceparent }
+        : (options.headers as Record<string, string>);
+
+      try {
+        const response = await fetch(url, { ...options, headers: headersWithTrace });
+        trace.onTraceEnd(span, method, url, response.status);
+        return response;
+      } catch (err: any) {
+        trace.onTraceEnd(span, method, url, 0, err?.message || 'Network error');
+        throw err;
+      }
+    }
+
+    // Legacy path: @opentelemetry/api if installed (kept for back-compat).
     if (!otel) {
       return fetch(url, options);
     }

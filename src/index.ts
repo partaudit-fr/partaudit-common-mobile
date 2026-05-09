@@ -1,6 +1,6 @@
 // API
 export { createApiClient, SessionExpiredError } from './api/createApiClient';
-export type { ApiClient, ApiClientConfig } from './api/createApiClient';
+export type { ApiClient, ApiClientConfig, TraceHooks } from './api/createApiClient';
 export * from './api/endpoints';
 
 // Types

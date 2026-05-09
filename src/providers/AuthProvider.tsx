@@ -13,6 +13,26 @@ const TOKEN_KEYS = {
 /** Buffer in seconds before token expiry to trigger refresh */
 const EXPIRY_BUFFER_SECONDS = 60;
 
+// Robust expires_at parser. The backend can return:
+//   - numeric seconds since epoch (e.g. "1735689600")
+//   - numeric milliseconds since epoch (e.g. "1735689600000")
+//   - ISO date string (e.g. "2026-12-31T23:59:59Z")
+// Returns the timestamp in milliseconds, or null when the input can't
+// be parsed — caller should treat null as "unknown, don't expire" so
+// we never lock a user out because of a format we don't recognise.
+function parseExpiresAtMs(value: string | null | undefined): number | null {
+  if (!value) return null;
+  // Try numeric first
+  const num = Number(value);
+  if (!Number.isNaN(num) && num > 0) {
+    // Anything below ~Sep 2001 in seconds (1e12) is treated as seconds.
+    return num > 1e12 ? num : num * 1000;
+  }
+  // Fall back to ISO date string
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? null : ms;
+}
+
 interface AuthState {
   user: User['user'] | null;
   isAuthenticated: boolean;
@@ -57,23 +77,26 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
         SecureStore.getItemAsync(TOKEN_KEYS.USER_DATA),
       ]);
 
-      if (!refreshToken || !refreshExpiresAt) {
+      // No refresh token = never logged in OR explicitly logged out.
+      if (!refreshToken || !userData) {
         setState({ user: null, isAuthenticated: false, isLoading: false });
         return;
       }
 
-      // Backend can return expires_at in either seconds (Unix epoch) or
-      // milliseconds depending on the service. Normalise: anything below
-      // ~Sep 2001 in seconds (1e12) is treated as seconds.
-      const refreshExpiryRaw = Number(refreshExpiresAt);
-      const refreshExpiryMs = refreshExpiryRaw > 1e12 ? refreshExpiryRaw : refreshExpiryRaw * 1000;
-      if (Date.now() >= refreshExpiryMs) {
+      // Pre-check the refresh expiry only when we can confidently parse
+      // it. If parsing fails (unknown format), we trust the stored
+      // session and let the API client's 401 path bump the user out
+      // when the refresh actually fails — same behaviour as
+      // mobile-client. This avoids logging out users on every restart
+      // because of a format mismatch we didn't anticipate.
+      const refreshExpiryMs = parseExpiresAtMs(refreshExpiresAt);
+      if (refreshExpiryMs !== null && Date.now() >= refreshExpiryMs) {
         await clearTokens();
         setState({ user: null, isAuthenticated: false, isLoading: false });
         return;
       }
 
-      const user = userData ? JSON.parse(userData) : null;
+      const user = JSON.parse(userData);
       setState({ user, isAuthenticated: true, isLoading: false });
     } catch {
       setState({ user: null, isAuthenticated: false, isLoading: false });
@@ -129,12 +152,14 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
       SecureStore.getItemAsync(TOKEN_KEYS.ACCESS_EXPIRES),
     ]);
 
-    if (!accessToken || !accessExpiresAt) return null;
+    if (!accessToken) return null;
 
-    // Same seconds-vs-ms normalisation as in restoreSession.
-    const expiresRaw = Number(accessExpiresAt);
-    const expiresMs = expiresRaw > 1e12 ? expiresRaw : expiresRaw * 1000;
-    const isExpired = Date.now() >= expiresMs - EXPIRY_BUFFER_SECONDS * 1000;
+    // If we can't confidently parse the expiry, return the token as-is
+    // and let the backend reject it with 401 — same lazy-validation
+    // strategy as restoreSession.
+    const expiresMs = parseExpiresAtMs(accessExpiresAt);
+    const isExpired =
+      expiresMs !== null && Date.now() >= expiresMs - EXPIRY_BUFFER_SECONDS * 1000;
 
     if (!isExpired) return accessToken;
 
