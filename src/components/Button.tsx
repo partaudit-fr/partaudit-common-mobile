@@ -1,7 +1,14 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
+import {
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  View,
+  StyleSheet,
+  type ViewStyle,
+  type TextStyle,
+} from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { cn } from '../lib/cn';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -15,36 +22,35 @@ interface ButtonProps {
   disabled?: boolean;
   fullWidth?: boolean;
   icon?: React.ReactNode;
-  className?: string;
+  style?: ViewStyle;
 }
 
-const variantClasses: Record<ButtonVariant, { container: string; text: string }> = {
-  primary: {
-    container: 'bg-brand-600 active:bg-brand-700',
-    text: 'text-white',
-  },
-  secondary: {
-    container: 'bg-gray-100 active:bg-gray-200',
-    text: 'text-gray-800',
-  },
-  outline: {
-    container: 'bg-transparent border border-gray-300 active:bg-gray-50',
-    text: 'text-gray-700',
-  },
-  ghost: {
-    container: 'bg-transparent active:bg-gray-100',
-    text: 'text-brand-600',
-  },
-  danger: {
-    container: 'bg-red-600 active:bg-red-700',
-    text: 'text-white',
-  },
+const variantContainerStyles: Record<ButtonVariant, ViewStyle> = {
+  primary: { backgroundColor: '#4F46E5' },
+  secondary: { backgroundColor: '#F3F4F6' },
+  outline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#D1D5DB' },
+  ghost: { backgroundColor: 'transparent' },
+  danger: { backgroundColor: '#DC2626' },
 };
 
-const sizeClasses: Record<ButtonSize, { container: string; text: string }> = {
-  sm: { container: 'py-2 px-3 rounded-lg', text: 'text-sm' },
-  md: { container: 'py-3 px-5 rounded-xl', text: 'text-base' },
-  lg: { container: 'py-4 px-6 rounded-xl', text: 'text-lg' },
+const variantTextStyles: Record<ButtonVariant, TextStyle> = {
+  primary: { color: '#FFFFFF' },
+  secondary: { color: '#1F2937' },
+  outline: { color: '#374151' },
+  ghost: { color: '#4F46E5' },
+  danger: { color: '#FFFFFF' },
+};
+
+const sizeContainerStyles: Record<ButtonSize, ViewStyle> = {
+  sm: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
+  md: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12 },
+  lg: { paddingVertical: 16, paddingHorizontal: 24, borderRadius: 12 },
+};
+
+const sizeTextStyles: Record<ButtonSize, TextStyle> = {
+  sm: { fontSize: 14 },
+  md: { fontSize: 16 },
+  lg: { fontSize: 18 },
 };
 
 export function Button({
@@ -56,11 +62,9 @@ export function Button({
   disabled = false,
   fullWidth = false,
   icon,
-  className,
+  style,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
-  const v = variantClasses[variant];
-  const s = sizeClasses[size];
 
   function handlePress() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -72,21 +76,30 @@ export function Button({
       onPress={handlePress}
       disabled={isDisabled}
       activeOpacity={0.8}
-      className={cn(
-        'flex-row items-center justify-center',
-        v.container,
-        s.container,
-        fullWidth && 'w-full',
-        isDisabled && 'opacity-50',
-        className,
-      )}
+      style={[
+        styles.container,
+        variantContainerStyles[variant],
+        sizeContainerStyles[size],
+        fullWidth && styles.fullWidth,
+        isDisabled && styles.disabled,
+        style,
+      ]}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={variant === 'outline' || variant === 'ghost' ? '#4F46E5' : '#FFFFFF'} />
+        <ActivityIndicator
+          size="small"
+          color={variant === 'outline' || variant === 'ghost' ? '#4F46E5' : '#FFFFFF'}
+        />
       ) : (
-        <View className="flex-row items-center gap-2">
+        <View style={styles.content}>
           {icon}
-          <Text className={cn('font-semibold', v.text, s.text)}>
+          <Text
+            style={[
+              styles.text,
+              variantTextStyles[variant],
+              sizeTextStyles[size],
+            ]}
+          >
             {title}
           </Text>
         </View>
@@ -94,3 +107,25 @@ export function Button({
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  text: {
+    fontWeight: '600',
+  },
+  fullWidth: {
+    width: '100%',
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+});

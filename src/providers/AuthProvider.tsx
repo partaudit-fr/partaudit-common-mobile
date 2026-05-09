@@ -62,9 +62,12 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
         return;
       }
 
-      // Check if refresh token itself is expired
-      const refreshExpiry = Number(refreshExpiresAt);
-      if (Date.now() >= refreshExpiry * 1000) {
+      // Backend can return expires_at in either seconds (Unix epoch) or
+      // milliseconds depending on the service. Normalise: anything below
+      // ~Sep 2001 in seconds (1e12) is treated as seconds.
+      const refreshExpiryRaw = Number(refreshExpiresAt);
+      const refreshExpiryMs = refreshExpiryRaw > 1e12 ? refreshExpiryRaw : refreshExpiryRaw * 1000;
+      if (Date.now() >= refreshExpiryMs) {
         await clearTokens();
         setState({ user: null, isAuthenticated: false, isLoading: false });
         return;
@@ -78,11 +81,14 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
   }
 
   async function storeTokens(data: User) {
+    // Coerce expires_at to string — SecureStore requires strings, and the
+    // backend can return either string ISO timestamps or numeric epoch seconds
+    // depending on the endpoint version.
     await Promise.all([
       SecureStore.setItemAsync(TOKEN_KEYS.ACCESS_TOKEN, data.access_token),
       SecureStore.setItemAsync(TOKEN_KEYS.REFRESH_TOKEN, data.refresh_token),
-      SecureStore.setItemAsync(TOKEN_KEYS.ACCESS_EXPIRES, data.access_token_expires_at),
-      SecureStore.setItemAsync(TOKEN_KEYS.REFRESH_EXPIRES, data.refresh_token_expires_at),
+      SecureStore.setItemAsync(TOKEN_KEYS.ACCESS_EXPIRES, String(data.access_token_expires_at)),
+      SecureStore.setItemAsync(TOKEN_KEYS.REFRESH_EXPIRES, String(data.refresh_token_expires_at)),
       SecureStore.setItemAsync(TOKEN_KEYS.USER_DATA, JSON.stringify(data.user)),
     ]);
   }
@@ -94,7 +100,7 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
   }
 
   const login = useCallback(async (email: string, password: string): Promise<User> => {
-    const response = await fetch(`${apiBaseUrl}/v1/authenticate`, {
+    const response = await fetch(`${apiBaseUrl}/authenticate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -125,8 +131,10 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
 
     if (!accessToken || !accessExpiresAt) return null;
 
-    const expiresAt = Number(accessExpiresAt);
-    const isExpired = Date.now() >= (expiresAt - EXPIRY_BUFFER_SECONDS) * 1000;
+    // Same seconds-vs-ms normalisation as in restoreSession.
+    const expiresRaw = Number(accessExpiresAt);
+    const expiresMs = expiresRaw > 1e12 ? expiresRaw : expiresRaw * 1000;
+    const isExpired = Date.now() >= expiresMs - EXPIRY_BUFFER_SECONDS * 1000;
 
     if (!isExpired) return accessToken;
 
@@ -145,12 +153,14 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
         return null;
       }
 
-      const response = await fetch(`${apiBaseUrl}/v1/refresh-access-token`, {
+      // Backend expects refresh_token in the body, not as Bearer header.
+      // Returning shape: { access_token, access_token_expires_at,
+      // refresh_token?, refresh_token_expires_at? } — we rotate the refresh
+      // token when the server rotates it, otherwise keep the existing one.
+      const response = await fetch(`${apiBaseUrl}/refresh-access-token`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${refreshToken}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
       });
 
       if (!response.ok) {
@@ -160,7 +170,15 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
 
       const data = await response.json();
       await SecureStore.setItemAsync(TOKEN_KEYS.ACCESS_TOKEN, data.access_token);
-      await SecureStore.setItemAsync(TOKEN_KEYS.ACCESS_EXPIRES, data.access_token_expires_at);
+      await SecureStore.setItemAsync(TOKEN_KEYS.ACCESS_EXPIRES, String(data.access_token_expires_at));
+      // Backend may rotate the refresh token (when nearing expiry). Persist
+      // the new pair when present, otherwise keep the existing one.
+      if (data.refresh_token) {
+        await SecureStore.setItemAsync(TOKEN_KEYS.REFRESH_TOKEN, data.refresh_token);
+      }
+      if (data.refresh_token_expires_at) {
+        await SecureStore.setItemAsync(TOKEN_KEYS.REFRESH_EXPIRES, String(data.refresh_token_expires_at));
+      }
 
       return data.access_token;
     } catch {

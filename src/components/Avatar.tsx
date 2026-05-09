@@ -1,7 +1,6 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet, type ViewStyle, type TextStyle } from 'react-native';
 import { Image } from 'expo-image';
-import { cn } from '../lib/cn';
 
 type AvatarSize = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -10,47 +9,97 @@ interface AvatarProps {
   name?: string;
   size?: AvatarSize;
   online?: boolean;
-  className?: string;
+  style?: ViewStyle;
 }
 
-const sizeClasses: Record<AvatarSize, { container: string; text: string; indicator: string }> = {
-  sm: { container: 'w-8 h-8', text: 'text-xs', indicator: 'w-2.5 h-2.5' },
-  md: { container: 'w-10 h-10', text: 'text-sm', indicator: 'w-3 h-3' },
-  lg: { container: 'w-14 h-14', text: 'text-xl', indicator: 'w-3.5 h-3.5' },
-  xl: { container: 'w-20 h-20', text: 'text-3xl', indicator: 'w-4 h-4' },
+const sizeValues: Record<AvatarSize, { container: number; fontSize: number; indicator: number }> = {
+  sm: { container: 32, fontSize: 12, indicator: 10 },
+  md: { container: 40, fontSize: 14, indicator: 12 },
+  lg: { container: 56, fontSize: 20, indicator: 14 },
+  xl: { container: 80, fontSize: 30, indicator: 16 },
 };
 
 function getInitials(name?: string): string {
   if (!name) return '?';
-  return name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 }
 
-export function Avatar({ imageUrl, name, size = 'md', online, className }: AvatarProps) {
-  const s = sizeClasses[size];
+export function Avatar({ imageUrl, name, size = 'md', online, style }: AvatarProps) {
+  const s = sizeValues[size];
+
+  const containerSize: ViewStyle = {
+    width: s.container,
+    height: s.container,
+    borderRadius: s.container / 2,
+  };
+
+  const indicatorSize: ViewStyle = {
+    width: s.indicator,
+    height: s.indicator,
+    borderRadius: s.indicator / 2,
+  };
+
+  const textSize: TextStyle = {
+    fontSize: s.fontSize,
+  };
 
   return (
-    <View className={cn('relative', className)}>
+    <View style={[styles.wrapper, style]}>
       {imageUrl ? (
         <Image
           source={{ uri: imageUrl }}
-          className={cn('rounded-full bg-gray-200', s.container)}
+          style={[styles.image, containerSize]}
         />
       ) : (
-        <View className={cn('rounded-full bg-brand-100 items-center justify-center', s.container)}>
-          <Text className={cn('font-semibold text-brand-700', s.text)}>
-            {getInitials(name)}
-          </Text>
+        <View style={[styles.placeholder, containerSize]}>
+          <Text style={[styles.initials, textSize]}>{getInitials(name)}</Text>
         </View>
       )}
       {online !== undefined && (
         <View
-          className={cn(
-            'absolute bottom-0 right-0 rounded-full border-2 border-white',
-            s.indicator,
-            online ? 'bg-green-500' : 'bg-gray-400',
-          )}
+          style={[
+            styles.indicator,
+            indicatorSize,
+            online ? styles.online : styles.offline,
+          ]}
         />
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrapper: {
+    position: 'relative',
+  },
+  image: {
+    backgroundColor: '#E5E7EB',
+  },
+  placeholder: {
+    backgroundColor: '#E0E7FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  initials: {
+    fontWeight: '600',
+    color: '#4338CA',
+  },
+  indicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  online: {
+    backgroundColor: '#22C55E',
+  },
+  offline: {
+    backgroundColor: '#9CA3AF',
+  },
+});

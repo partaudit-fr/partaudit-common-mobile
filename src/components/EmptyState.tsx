@@ -1,28 +1,49 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-import { cn } from '../lib/cn';
+import { View, Text, StyleSheet, type ViewStyle } from 'react-native';
 
 interface EmptyStateProps {
   title: string;
   description?: string;
   icon?: React.ReactNode;
   action?: React.ReactNode;
-  className?: string;
+  style?: ViewStyle;
 }
 
-export function EmptyState({ title, description, icon, action, className }: EmptyStateProps) {
+export function EmptyState({ title, description, icon, action, style }: EmptyStateProps) {
   return (
-    <View className={cn('flex-1 items-center justify-center p-8', className)}>
-      {icon && <View className="mb-4">{icon}</View>}
-      <Text className="text-lg font-semibold text-gray-900 text-center mb-2">
-        {title}
-      </Text>
-      {description && (
-        <Text className="text-sm text-gray-500 text-center leading-relaxed">
-          {description}
-        </Text>
-      )}
-      {action && <View className="mt-6">{action}</View>}
+    <View style={[styles.container, style]}>
+      {icon && <View style={styles.iconWrapper}>{icon}</View>}
+      <Text style={styles.title}>{title}</Text>
+      {description && <Text style={styles.description}>{description}</Text>}
+      {action && <View style={styles.actionWrapper}>{action}</View>}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  iconWrapper: {
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  actionWrapper: {
+    marginTop: 24,
+  },
+});

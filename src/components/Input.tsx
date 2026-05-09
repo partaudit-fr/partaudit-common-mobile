@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
-import { View, TextInput, Text, type TextInputProps } from 'react-native';
-import { cn } from '../lib/cn';
+import {
+  View,
+  TextInput,
+  Text,
+  StyleSheet,
+  type TextInputProps,
+  type ViewStyle,
+} from 'react-native';
 
-interface InputProps extends Omit<TextInputProps, 'className'> {
+interface InputProps extends Omit<TextInputProps, 'style'> {
   label?: string;
   error?: string;
   hint?: string;
   icon?: React.ReactNode;
-  className?: string;
+  style?: ViewStyle;
 }
 
 export function Input({
@@ -15,24 +21,16 @@ export function Input({
   error,
   hint,
   icon,
-  className,
+  style,
   ...props
 }: InputProps) {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
-    <View className={cn('mb-4', className)}>
-      {label && (
-        <Text className="text-sm font-medium text-gray-700 mb-1.5">
-          {label}
-        </Text>
-      )}
-      <View className="relative">
-        {icon && (
-          <View className="absolute left-3 top-0 bottom-0 justify-center z-10">
-            {icon}
-          </View>
-        )}
+    <View style={[styles.wrapper, style]}>
+      {label && <Text style={styles.label}>{label}</Text>}
+      <View style={styles.inputContainer}>
+        {icon && <View style={styles.iconContainer}>{icon}</View>}
         <TextInput
           placeholderTextColor="#9CA3AF"
           onFocus={(e) => {
@@ -43,21 +41,70 @@ export function Input({
             setIsFocused(false);
             props.onBlur?.(e);
           }}
-          className={cn(
-            'border rounded-xl px-4 py-3 text-base text-gray-900 bg-white',
-            icon && 'pl-11',
-            isFocused ? 'border-brand-500 border-2' : 'border-gray-300',
-            error && 'border-red-500',
-          )}
+          style={[
+            styles.input,
+            icon && styles.inputWithIcon,
+            isFocused && styles.inputFocused,
+            error && styles.inputError,
+          ]}
           {...props}
         />
       </View>
-      {error && (
-        <Text className="text-sm text-red-600 mt-1">{error}</Text>
-      )}
-      {hint && !error && (
-        <Text className="text-sm text-gray-500 mt-1">{hint}</Text>
-      )}
+      {error && <Text style={styles.errorText}>{error}</Text>}
+      {hint && !error && <Text style={styles.hintText}>{hint}</Text>}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrapper: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  inputContainer: {
+    position: 'relative',
+  },
+  iconContainer: {
+    position: 'absolute',
+    left: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#111827',
+    backgroundColor: '#FFFFFF',
+  },
+  inputWithIcon: {
+    paddingLeft: 44,
+  },
+  inputFocused: {
+    borderColor: '#6366F1',
+    borderWidth: 2,
+  },
+  inputError: {
+    borderColor: '#DC2626',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
+    marginTop: 4,
+  },
+  hintText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+});

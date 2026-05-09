@@ -1,29 +1,42 @@
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
-import { cn } from '../lib/cn';
+import { View, ActivityIndicator, StyleSheet, type ViewStyle } from 'react-native';
 
 interface LoadingSpinnerProps {
   size?: 'small' | 'large';
   color?: string;
   fullScreen?: boolean;
-  className?: string;
+  style?: ViewStyle;
 }
 
 export function LoadingSpinner({
   size = 'large',
   color = '#4F46E5',
   fullScreen = false,
-  className,
+  style,
 }: LoadingSpinnerProps) {
   return (
     <View
-      className={cn(
-        'items-center justify-center',
-        fullScreen ? 'flex-1 bg-white' : 'p-5',
-        className,
-      )}
+      style={[
+        styles.container,
+        fullScreen ? styles.fullScreen : styles.inline,
+        style,
+      ]}
     >
       <ActivityIndicator size={size} color={color} />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullScreen: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  inline: {
+    padding: 20,
+  },
+});

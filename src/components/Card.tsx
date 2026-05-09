@@ -1,23 +1,31 @@
 import React from 'react';
-import { View } from 'react-native';
-import { cn } from '../lib/cn';
+import { View, StyleSheet, type ViewStyle } from 'react-native';
 
 interface CardProps {
   children: React.ReactNode;
-  className?: string;
+  style?: ViewStyle;
   padded?: boolean;
 }
 
-export function Card({ children, className, padded = true }: CardProps) {
+export function Card({ children, style, padded = true }: CardProps) {
   return (
-    <View
-      className={cn(
-        'bg-white rounded-2xl shadow-sm',
-        padded && 'p-4',
-        className,
-      )}
-    >
+    <View style={[styles.card, padded && styles.padded, style]}>
       {children}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  padded: {
+    padding: 16,
+  },
+});

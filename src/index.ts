@@ -30,9 +30,6 @@ export { Avatar } from './components/Avatar';
 export { EmptyState } from './components/EmptyState';
 export { LoadingSpinner } from './components/LoadingSpinner';
 
-// Lib
-export { cn } from './lib/cn';
-
 // Providers
 export { AuthProvider, useAuth } from './providers/AuthProvider';
 export { WebSocketProvider, useWebSocket } from './providers/WebSocketProvider';

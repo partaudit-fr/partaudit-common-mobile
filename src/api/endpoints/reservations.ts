@@ -53,34 +53,44 @@ export interface CancellationCalculation {
 
 export function createReservationEndpoints(api: ApiClient) {
   return {
-    list: (page = 1, pageSize = 20, status?: ReservationStatus) => {
-      const params = new URLSearchParams({
-        page: String(page),
-        page_size: String(pageSize),
-      });
-      if (status) params.set('status', status);
-      return api.get<ReservationListResponse>(`/v1/reservations?${params}`);
-    },
+    // Client-side: their own reservations (booker_id == caller).
+    listMine: () => api.get<{ items: Reservation[] }>(`/v1/booking/reservations`),
+
+    // Provider/auditor-side: missions assigned to them. The same endpoint
+    // route name back-end-side ("available") — historically meant
+    // "available to me as the assigned auditor", not "open slots".
+    listProviderMissions: () => api.get<{ items: Reservation[] }>(`/v1/booking/reservations/available`),
 
     getById: (id: string) =>
-      api.get<Reservation>(`/v1/reservations/${id}`),
+      api.get<Reservation>(`/v1/booking/reservations/${id}`),
 
+    // Provider commands
     confirm: (id: string) =>
-      api.put<{ success: boolean }>(`/v1/reservations/${id}/confirm`, {}),
+      api.putWithoutBody<{ success: boolean }>(`/v1/booking/reservations/${id}/confirm`),
 
-    reject: (id: string, reason: string) =>
-      api.put<{ success: boolean }>(`/v1/reservations/${id}/refuse`, { reason }),
+    refuse: (id: string, data: { reason: string }) =>
+      api.put<{ success: boolean }>(`/v1/booking/reservations/${id}/refuse`, data),
 
-    cancel: (id: string, data: CancelReservationRequest) =>
-      api.put<{ success: boolean }>(`/v1/reservations/${id}/cancel`, data),
+    markAuditCompleted: (id: string) =>
+      api.putWithoutBody<{ success: boolean }>(`/v1/booking/reservations/${id}/audit-completed`),
 
-    markCompleted: (id: string) =>
-      api.put<{ success: boolean }>(`/v1/reservations/${id}/complete`, {}),
+    // Client commands
+    cancelClient: (id: string, data: CancelReservationRequest) =>
+      api.put<{ success: boolean }>(`/v1/booking/reservations/${id}/client-cancel`, data),
 
     getCancellationCalculation: (id: string) =>
-      api.get<CancellationCalculation>(`/v1/reservations/${id}/cancellation-calculation`),
+      api.get<CancellationCalculation>(`/v1/booking/reservations/${id}/calculate-cancellation`),
 
-    getAvailableSlots: (providerId: number, date: string) =>
-      api.get<{ slots: string[] }>(`/v1/providers/${providerId}/available-slots?date=${date}`),
+    getHistory: (id: string) =>
+      api.get<{
+        entries: Array<{
+          action: string;
+          actor_user_id: number;
+          actor_name: string;
+          actor_role: string;
+          occurred_at: string;
+          details_json: string;
+        }>;
+      }>(`/v1/booking/reservations/${id}/history`),
   };
 }
