@@ -9,7 +9,7 @@ import {
   View, Text, Pressable, FlatList, Image, TextInput,
   StyleSheet, ActivityIndicator, RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, Pin, AlertCircle } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -42,6 +42,7 @@ interface MessagesListProps {
 export default function MessagesList({ api, onOpenConversation, onLoginPress }: MessagesListProps) {
   const { isAuthenticated } = useAuth();
   const { t, i18n } = useTranslation();
+  const insets = useSafeAreaInsets();
   const messaging = useMemo(() => createMessagingEndpoints(api), [api]);
   const [search, setSearch] = useState('');
 
@@ -90,19 +91,19 @@ export default function MessagesList({ api, onOpenConversation, onLoginPress }: 
 
   if (!isAuthenticated) {
     return (
-      <SafeAreaView style={s.root} edges={['top']}>
-        <View style={s.header}><Text style={s.headerTitle}>{t('messages.title')}</Text></View>
+      <View style={s.root}>
+        <View style={[s.header, { paddingTop: insets.top + 8 }]}><Text style={s.headerTitle}>{t('messages.title')}</Text></View>
         <View style={s.empty}>
           <AlertCircle size={40} color="#D1D5DB" />
           <Text style={s.emptyTitle}>{t('messages.loginRequired')}</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={s.root} edges={['top']}>
-      <View style={s.header}><Text style={s.headerTitle}>{t('messages.title')}</Text></View>
+    <View style={s.root}>
+      <View style={[s.header, { paddingTop: insets.top + 8 }]}><Text style={s.headerTitle}>{t('messages.title')}</Text></View>
 
       <View style={s.searchWrap}>
         <View style={s.searchBar}>
@@ -179,7 +180,7 @@ export default function MessagesList({ api, onOpenConversation, onLoginPress }: 
           )}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

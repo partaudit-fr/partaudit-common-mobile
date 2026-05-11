@@ -9,7 +9,7 @@ import {
   View, Text, Pressable, FlatList, TextInput, Image,
   StyleSheet, Platform, KeyboardAvoidingView, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, Send } from 'lucide-react-native';
@@ -65,6 +65,7 @@ interface MessageThreadProps {
 
 export default function MessageThread({ api, conversationId: id, onBack }: MessageThreadProps) {
   const { t, i18n } = useTranslation();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const messaging = useMemo(() => createMessagingEndpoints(api), [api]);
   const queryClient = useQueryClient();
@@ -143,8 +144,8 @@ export default function MessageThread({ api, conversationId: id, onBack }: Messa
   }, [messages, i18n.language]);
 
   return (
-    <SafeAreaView style={s.root} edges={['top']}>
-      <View style={s.header}>
+    <View style={s.root}>
+      <View style={[s.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={onBack} hitSlop={12}>
           <ChevronLeft size={24} color="#111827" />
         </Pressable>
@@ -202,7 +203,7 @@ export default function MessageThread({ api, conversationId: id, onBack }: Messa
           />
         )}
 
-        <View style={s.composer}>
+        <View style={[s.composer, { paddingBottom: insets.bottom + 8 }]}>
           <TextInput
             style={s.composerInput}
             value={input}
@@ -220,7 +221,7 @@ export default function MessageThread({ api, conversationId: id, onBack }: Messa
           </Pressable>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
