@@ -32,6 +32,7 @@ export { LoadingSpinner } from './components/LoadingSpinner';
 export { default as DynamicForm } from './components/DynamicForm';
 export { default as MessagesList } from './components/MessagesList';
 export { default as MessageThread } from './components/MessageThread';
+export { default as AuditCalendar } from './components/AuditCalendar';
 
 // Providers
 export { AuthProvider, useAuth } from './providers/AuthProvider';
