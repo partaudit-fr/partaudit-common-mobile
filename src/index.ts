@@ -33,6 +33,8 @@ export { default as DynamicForm } from './components/DynamicForm';
 export { default as MessagesList } from './components/MessagesList';
 export { default as MessageThread } from './components/MessageThread';
 export { default as AuditCalendar } from './components/AuditCalendar';
+export { default as DeviationReportScreen } from './components/DeviationReportScreen';
+export type { DeviationReportScreenProps } from './components/DeviationReportScreen';
 
 // Providers
 export { AuthProvider, useAuth } from './providers/AuthProvider';
