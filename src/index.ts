@@ -29,6 +29,7 @@ export { Badge } from './components/Badge';
 export { Avatar } from './components/Avatar';
 export { EmptyState } from './components/EmptyState';
 export { LoadingSpinner } from './components/LoadingSpinner';
+export { default as DynamicForm } from './components/DynamicForm';
 
 // Providers
 export { AuthProvider, useAuth } from './providers/AuthProvider';
