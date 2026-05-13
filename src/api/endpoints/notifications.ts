@@ -24,15 +24,14 @@ export function createNotificationEndpoints(api: ApiClient) {
         `/v1/notifications?page=${page}&page_size=${pageSize}`,
       ),
 
+    // Backend (huma-based notifications service) registers /read and
+    // /read-all as POST endpoints — GET returns 405. Body is unused but
+    // required by the API client signature.
     markAsRead: (id: string) =>
-      api.getNotifications<{ success: boolean }>(
-        `/v1/notifications/${id}/read`,
-      ),
+      api.post<{ success: boolean }>(`/v1/notifications/${id}/read`, {}),
 
     markAllAsRead: () =>
-      api.getNotifications<{ success: boolean }>(
-        '/v1/notifications/read-all',
-      ),
+      api.post<{ success: boolean }>('/v1/notifications/read-all', {}),
 
     getUnreadCount: () =>
       api.getNotifications<{ count: number }>('/v1/notifications/unread-count'),
