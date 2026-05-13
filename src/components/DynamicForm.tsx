@@ -15,7 +15,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View, Text, Pressable, TextInput, ScrollView, Switch, StyleSheet,
-  ActivityIndicator, Alert, Platform, KeyboardAvoidingView,
+  ActivityIndicator, Alert, Platform, KeyboardAvoidingView, Modal,
 } from 'react-native';
 import RenderHtml from 'react-native-render-html';
 import { useWindowDimensions } from 'react-native';
@@ -24,6 +24,7 @@ import {
   ChevronDown, ChevronUp, Check, Circle, AlertTriangle, Send,
   CheckCircle, XCircle, Clock, FileText, X,
   Bold, Italic, Underline, Strikethrough, List, ListOrdered, WandSparkles,
+  Plus, Search,
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import type { ApiClient } from '../api/createApiClient';
@@ -229,6 +230,158 @@ function RichEditorField({ value, onChange, placeholder, aiAssist, userRole }: {
   );
 }
 
+// ── Reference Picker (single + multi) ──
+//
+// Used for `reference` and `multi_reference` field types — currently the
+// final report's `_documents_consulted` (links to reservation document items)
+// and `<radio>_fe` (links to fiches d'écart). Items come pre-loaded via the
+// screen's referenceData so the modal is a simple in-memory cockable list
+// + search filter, no fetch round-trip.
+function ReferencePickerField({ multi, items, value, placeholder, onChange, t }: {
+  multi: boolean;
+  items: any[];
+  value: any;
+  placeholder: string;
+  onChange: (v: any) => void;
+  t: (key: string) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const labelOf = useCallback((it: any): string =>
+    it?.name || it?.title || it?.label || it?.display_name || String(it?.id || ''),
+  []);
+
+  const selectedIds: string[] = useMemo(() => {
+    if (multi) return (Array.isArray(value) ? value : []).map(String);
+    return value != null && value !== '' ? [String(value)] : [];
+  }, [multi, value]);
+
+  const selectedItems = useMemo(
+    () => selectedIds.map((id) => items.find((i) => String(i.id) === id)).filter(Boolean),
+    [items, selectedIds],
+  );
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return items;
+    const q = query.toLowerCase();
+    return items.filter((it) => labelOf(it).toLowerCase().includes(q));
+  }, [items, query, labelOf]);
+
+  const toggle = (id: any) => {
+    const strId = String(id);
+    if (multi) {
+      const next = selectedIds.includes(strId)
+        ? selectedIds.filter((x) => x !== strId)
+        : [...selectedIds, strId];
+      onChange(next);
+    } else {
+      onChange(selectedIds.includes(strId) ? null : strId);
+      setOpen(false);
+    }
+  };
+
+  const removeChip = (id: string) => {
+    if (multi) onChange(selectedIds.filter((x) => x !== id));
+    else onChange(null);
+  };
+
+  return (
+    <View style={fs.refContainer}>
+      {/* Selected chips + add button */}
+      <View style={fs.refChipsRow}>
+        {selectedItems.length === 0 && (
+          <Text style={fs.refPlaceholder}>{placeholder}</Text>
+        )}
+        {selectedItems.map((it: any) => (
+          <View key={String(it.id)} style={fs.refChip}>
+            <Text style={fs.refChipText} numberOfLines={1}>{labelOf(it)}</Text>
+            <Pressable onPress={() => removeChip(String(it.id))} hitSlop={6}>
+              <X size={14} color="#6B7280" />
+            </Pressable>
+          </View>
+        ))}
+        <Pressable style={fs.refAddBtn} onPress={() => { setQuery(''); setOpen(true); }}>
+          <Plus size={14} color="#25408D" />
+          <Text style={fs.refAddBtnText}>
+            {multi
+              ? (selectedIds.length === 0 ? t('common.select') : t('common.add'))
+              : (selectedIds.length === 0 ? t('common.select') : t('common.change'))}
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Picker modal */}
+      <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={fs.refModalOverlay}>
+            <View style={fs.refModalSheet}>
+              <View style={fs.refModalHeader}>
+                <Text style={fs.refModalTitle}>{placeholder}</Text>
+                <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+                  <X size={22} color="#6B7280" />
+                </Pressable>
+              </View>
+
+              <View style={fs.refSearchBox}>
+                <Search size={16} color="#9CA3AF" />
+                <TextInput
+                  style={fs.refSearchInput}
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder={t('common.search')}
+                  placeholderTextColor="#9CA3AF"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+                {query.length > 0 && (
+                  <Pressable onPress={() => setQuery('')} hitSlop={6}>
+                    <X size={14} color="#9CA3AF" />
+                  </Pressable>
+                )}
+              </View>
+
+              <ScrollView style={fs.refModalList} keyboardShouldPersistTaps="handled">
+                {filtered.length === 0 && (
+                  <Text style={fs.refEmpty}>{t('common.noResults') || '—'}</Text>
+                )}
+                {filtered.map((it) => {
+                  const strId = String(it.id);
+                  const isSel = selectedIds.includes(strId);
+                  return (
+                    <Pressable
+                      key={strId}
+                      style={[fs.refRow, isSel && fs.refRowSelected]}
+                      onPress={() => toggle(it.id)}
+                    >
+                      <View style={[fs.refCheckbox, isSel && fs.refCheckboxOn]}>
+                        {isSel && <Check size={14} color="#FFF" />}
+                      </View>
+                      <Text style={[fs.refRowText, isSel && fs.refRowTextSelected]} numberOfLines={2}>
+                        {labelOf(it)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {multi && (
+                <View style={fs.refModalFooter}>
+                  <Pressable style={fs.refDoneBtn} onPress={() => setOpen(false)}>
+                    <Text style={fs.refDoneBtnText}>
+                      {t('common.confirm')} ({selectedIds.length})
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </View>
+  );
+}
+
 // ── DynamicField ──
 
 function DynamicField({ field, value, disabled, onChange, sectionData, referenceData, userRole, t }: {
@@ -387,7 +540,7 @@ function DynamicField({ field, value, disabled, onChange, sectionData, reference
         )
       )}
 
-      {/* Reference */}
+      {/* Reference / Multi-reference */}
       {(type === 'reference' || type === 'multi_reference') && (() => {
         const entity = field.reference?.entity || field.source?.entity || field.code || '';
         // Try multiple entity names (exact, plural, singular)
@@ -401,27 +554,36 @@ function DynamicField({ field, value, disabled, onChange, sectionData, reference
           }
         }
 
-        const resolveLabel = (id: any): string => {
-          if (!id) return '—';
-          const strId = String(id);
-          const found = items.find((i: any) => String(i.id) === strId);
-          if (found) return found.name || found.title || found.label || strId;
-          // If not found in reference data, show a truncated ID
-          return strId.length > 20 ? strId.substring(0, 8) + '...' : strId;
-        };
+        const isMulti = type === 'multi_reference';
 
-        let displayVal = '—';
-        if (type === 'multi_reference') {
-          const vals = Array.isArray(value) ? value : [];
-          displayVal = vals.length > 0 ? vals.map(resolveLabel).join(', ') : '—';
-        } else {
-          displayVal = resolveLabel(value);
+        if (disabled) {
+          // Read-only display: chips for multi, plain text for single
+          const resolveLabel = (id: any): string => {
+            if (!id) return '—';
+            const strId = String(id);
+            const found = items.find((i: any) => String(i.id) === strId);
+            if (found) return found.name || found.title || found.label || strId;
+            return strId.length > 20 ? strId.substring(0, 8) + '...' : strId;
+          };
+          const displayVal = isMulti
+            ? ((Array.isArray(value) ? value : []) as any[]).map(resolveLabel).join(', ') || '—'
+            : resolveLabel(value);
+          return (
+            <View style={fs.readBox}>
+              <Text style={[fs.readValue, !value && fs.empty]}>{displayVal}</Text>
+            </View>
+          );
         }
 
         return (
-          <View style={fs.readBox}>
-            <Text style={[fs.readValue, !value && fs.empty]}>{displayVal}</Text>
-          </View>
+          <ReferencePickerField
+            multi={isMulti}
+            items={items}
+            value={value}
+            placeholder={field.placeholder || (isMulti ? t('common.select') : t('common.select'))}
+            onChange={(v) => onChange?.(field.code, v)}
+            t={t}
+          />
         );
       })()}
 
@@ -890,4 +1052,75 @@ const fs = StyleSheet.create({
     backgroundColor: '#7C3AED',
   },
   richEditor: { minHeight: 140 },
+
+  // ── Reference picker ──
+  refContainer: { },
+  refChipsRow: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 6,
+    padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#D1D5DB',
+    backgroundColor: '#FFF', minHeight: 44, alignItems: 'center',
+  },
+  refPlaceholder: { fontSize: 13, color: '#9CA3AF', marginLeft: 4 },
+  refChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
+    backgroundColor: '#EBF0FF', borderWidth: 1, borderColor: '#C7D2FE',
+    maxWidth: 220,
+  },
+  refChipText: { fontSize: 12, fontWeight: '600', color: '#1E3A8A', flexShrink: 1 },
+  refAddBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
+    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#25408D',
+  },
+  refAddBtnText: { fontSize: 12, fontWeight: '600', color: '#25408D' },
+
+  refModalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end',
+  },
+  refModalSheet: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    maxHeight: '85%', minHeight: '50%',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12 },
+      android: { elevation: 8 },
+    }),
+  },
+  refModalHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
+    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+  },
+  refModalTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: '#111827' },
+  refSearchBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 12, paddingVertical: 10, marginHorizontal: 16, marginTop: 12,
+    backgroundColor: '#F3F4F6', borderRadius: 10,
+  },
+  refSearchInput: { flex: 1, fontSize: 14, color: '#111827', paddingVertical: 0 },
+  refModalList: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12 },
+  refEmpty: { textAlign: 'center', color: '#9CA3AF', fontSize: 13, padding: 20 },
+  refRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8,
+  },
+  refRowSelected: { backgroundColor: '#EBF0FF' },
+  refCheckbox: {
+    width: 20, height: 20, borderRadius: 5,
+    borderWidth: 1.5, borderColor: '#D1D5DB',
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFF',
+  },
+  refCheckboxOn: { backgroundColor: '#25408D', borderColor: '#25408D' },
+  refRowText: { flex: 1, fontSize: 14, color: '#374151' },
+  refRowTextSelected: { fontWeight: '600', color: '#25408D' },
+  refModalFooter: {
+    padding: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6',
+  },
+  refDoneBtn: {
+    backgroundColor: '#25408D', paddingVertical: 13, borderRadius: 10,
+    alignItems: 'center',
+  },
+  refDoneBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 });
