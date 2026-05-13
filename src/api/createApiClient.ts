@@ -63,6 +63,13 @@ export interface ApiClientConfig {
     search?: string;
     chats?: string;
   };
+  /**
+   * Extra HTTP headers to send on every request. Useful for stable
+   * client-identification headers like `X-App-Scope: client | pro` that
+   * the chats / notifications backends use to route push notifications
+   * to the right app.
+   */
+  extraHeaders?: Record<string, string>;
 }
 
 export interface ApiClient {
@@ -89,6 +96,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     tracerName = 'partaudit-mobile',
     trace,
     serviceUrls = {},
+    extraHeaders = {},
   } = config;
 
   function detectServiceName(url: string): string {
@@ -169,6 +177,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   async function getHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      ...extraHeaders,
     };
 
     const token = await getAccessToken();
@@ -180,7 +189,9 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   }
 
   async function getHeadersNoContentType(): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {
+      ...extraHeaders,
+    };
 
     const token = await getAccessToken();
     if (token) {

@@ -19,10 +19,11 @@ import {
 } from 'react-native';
 import RenderHtml from 'react-native-render-html';
 import { useWindowDimensions } from 'react-native';
-import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
+import { RichText, useEditorBridge, useBridgeState, TenTapStartKit, PlaceholderBridge } from '@10play/tentap-editor';
 import {
   ChevronDown, ChevronUp, Check, Circle, AlertTriangle, Send,
-  CheckCircle, XCircle, Clock, FileText,
+  CheckCircle, XCircle, Clock, FileText, X,
+  Bold, Italic, Underline, Strikethrough, List, ListOrdered, WandSparkles,
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import type { ApiClient } from '../api/createApiClient';
@@ -158,39 +159,84 @@ function RichContentDisplay({ html }: { html: string }) {
 }
 
 // ── Rich Editor Field ──
-function RichEditorField({ value, onChange, placeholder }: {
+//
+// Built on @10play/tentap-editor (Tiptap/ProseMirror in a WebView). The
+// toolbar is a hand-rolled row of lucide icons so we control the look
+// completely (DEFAULT_TOOLBAR_ITEMS uses PNG sprites that don't blend in).
+//
+// The trailing AI wand button is rendered only when both flags align:
+//   - aiAssist === true   → set on the field via the template_generator
+//                            (final_report synthesis fields) or via the
+//                            admin Template Builder.
+//   - userRole === 'evaluator' → AI assist is auditor-only; clients write
+//                            their own actions plan unassisted.
+// Tapping is a no-op for now (backend AI endpoint not wired).
+function RichEditorField({ value, onChange, placeholder, aiAssist, userRole }: {
   value: string; onChange: (v: string) => void; placeholder?: string;
+  aiAssist?: boolean; userRole?: string;
 }) {
-  const editorRef = useRef<RichEditor>(null);
+  const showAI = aiAssist === true && userRole === 'evaluator';
+  const editor = useEditorBridge({
+    initialContent: value || '',
+    autofocus: false,
+    avoidIosKeyboard: true,
+    bridgeExtensions: [
+      ...TenTapStartKit,
+      PlaceholderBridge.configureExtension({ placeholder: placeholder || '' }),
+    ],
+    onChange: async () => {
+      const html = await editor.getHTML();
+      onChange(html);
+    },
+  });
+  const state = useBridgeState(editor);
+
+  const tools: { Icon: any; active: boolean; onPress: () => void }[] = [
+    { Icon: Bold,          active: !!state.isBoldActive,        onPress: () => editor.toggleBold() },
+    { Icon: Italic,        active: !!state.isItalicActive,      onPress: () => editor.toggleItalic() },
+    { Icon: Underline,     active: !!state.isUnderlineActive,   onPress: () => editor.toggleUnderline() },
+    { Icon: Strikethrough, active: !!state.isStrikeActive,      onPress: () => editor.toggleStrike() },
+    { Icon: List,          active: !!state.isBulletListActive,  onPress: () => editor.toggleBulletList() },
+    { Icon: ListOrdered,   active: !!state.isOrderedListActive, onPress: () => editor.toggleOrderedList() },
+  ];
 
   return (
     <View style={fs.richContainer}>
-      <RichToolbar
-        editor={editorRef}
-        actions={[actions.setBold, actions.setItalic, actions.setUnderline, actions.insertBulletsList, actions.insertOrderedList, actions.setStrikethrough]}
-        style={fs.richToolbar}
-        iconTint="#374151"
-        selectedIconTint="#25408D"
-      />
-      <RichEditor
-        ref={editorRef}
-        initialContentHTML={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        editorStyle={{ backgroundColor: '#FFF', color: '#111827', placeholderColor: '#D1D5DB', contentCSSText: 'font-size: 15px; padding: 8px; min-height: 100px;' }}
-        style={fs.richEditor}
-      />
+      <View style={fs.richToolbar}>
+        {tools.map((t, i) => (
+          <Pressable
+            key={i}
+            onPress={t.onPress}
+            style={[fs.toolBtn, t.active && fs.toolBtnActive]}
+            hitSlop={4}
+          >
+            <t.Icon size={17} color={t.active ? '#25408D' : '#374151'} />
+          </Pressable>
+        ))}
+        <View style={{ flex: 1 }} />
+        {showAI && (
+          <Pressable
+            style={fs.aiBtn}
+            onPress={() => { /* TODO: brancher l'assistant IA */ }}
+            hitSlop={4}
+          >
+            <WandSparkles size={16} color="#FFF" />
+          </Pressable>
+        )}
+      </View>
+      <RichText editor={editor} style={fs.richEditor} />
     </View>
   );
 }
 
 // ── DynamicField ──
 
-function DynamicField({ field, value, disabled, onChange, sectionData, referenceData, t }: {
+function DynamicField({ field, value, disabled, onChange, sectionData, referenceData, userRole, t }: {
   field: FieldSchema; value: any; disabled: boolean;
   onChange?: (code: string, val: any) => void;
   sectionData: Record<string, any>;
   referenceData?: Record<string, any>;
+  userRole?: string;
   t: (key: string) => string;
 }) {
   // Visibility condition
@@ -245,6 +291,8 @@ function DynamicField({ field, value, disabled, onChange, sectionData, reference
             value={String(value || '')}
             onChange={(v) => onChange?.(field.code, v)}
             placeholder={field.placeholder || ''}
+            aiAssist={(field as any).ai_assist === true}
+            userRole={userRole}
           />
         )
       )}
@@ -379,32 +427,63 @@ function DynamicField({ field, value, disabled, onChange, sectionData, reference
 
       {/* Repeater */}
       {type === 'repeater' && (() => {
-        const subfields: any[] = field.subfields?.fields || field.item_schema?.fields || field.itemSchema?.fields || [];
+        // Templates ship subfields under one of three shapes — direct array
+        // (final_report), { fields: [...] } object (audit_plan), or camelCase.
+        const rawSub: any = field.subfields ?? field.item_schema ?? field.itemSchema;
+        const subfields: any[] = Array.isArray(rawSub) ? rawSub : (rawSub?.fields || []);
         const rows: any[] = Array.isArray(value) ? value : [];
+        const updateRow = (rowIdx: number, code: string, val: any) => {
+          const next = rows.map((r, i) => (i === rowIdx ? { ...r, [code]: val } : r));
+          onChange?.(field.code, next);
+        };
+        const removeRow = (rowIdx: number) => {
+          onChange?.(field.code, rows.filter((_, i) => i !== rowIdx));
+        };
         return (
           <View style={fs.repeaterContainer}>
             {rows.length === 0 && <Text style={fs.empty}>—</Text>}
             {rows.map((row: any, rowIdx: number) => (
               <View key={row.id || rowIdx} style={fs.repeaterRow}>
-                <Text style={fs.repeaterRowNum}>#{rowIdx + 1}</Text>
+                <View style={fs.repeaterRowHeader}>
+                  <Text style={fs.repeaterRowNum}>#{rowIdx + 1}</Text>
+                  {!disabled && (
+                    <Pressable onPress={() => removeRow(rowIdx)} hitSlop={8} style={fs.repeaterRemoveBtn}>
+                      <X size={14} color="#9CA3AF" />
+                    </Pressable>
+                  )}
+                </View>
                 {subfields.filter((sf: any) => !sf.hidden).map((sf: any) => {
                   const val = row[sf.code];
+                  // Files are display-only inside repeaters (upload UI not yet wired).
+                  if (sf.type === 'files') {
+                    return (
+                      <View key={sf.code} style={fs.repeaterField}>
+                        <Text style={fs.repeaterFieldLabel}>{sf.label}</Text>
+                        {Array.isArray(val) && val.length > 0 ? (
+                          val.map((f: any, fi: number) => (
+                            <View key={fi} style={fs.repeaterFileRow}>
+                              <FileText size={12} color="#6B7280" />
+                              <Text style={fs.repeaterFileName} numberOfLines={1}>{f.title || f.name || 'Fichier'}</Text>
+                            </View>
+                          ))
+                        ) : (
+                          <Text style={[fs.repeaterFieldValue, fs.empty]}>—</Text>
+                        )}
+                      </View>
+                    );
+                  }
                   return (
-                    <View key={sf.code} style={fs.repeaterField}>
-                      <Text style={fs.repeaterFieldLabel}>{sf.label}</Text>
-                      {sf.type === 'files' && Array.isArray(val) ? (
-                        val.map((f: any, fi: number) => (
-                          <View key={fi} style={fs.repeaterFileRow}>
-                            <FileText size={12} color="#6B7280" />
-                            <Text style={fs.repeaterFileName} numberOfLines={1}>{f.title || f.name || 'Fichier'}</Text>
-                          </View>
-                        ))
-                      ) : (
-                        <Text style={[fs.repeaterFieldValue, !val && fs.empty]}>
-                          {val != null && val !== '' ? String(val) : '—'}
-                        </Text>
-                      )}
-                    </View>
+                    <DynamicField
+                      key={sf.code}
+                      field={sf}
+                      value={val}
+                      disabled={disabled}
+                      onChange={(code, v) => updateRow(rowIdx, code, v)}
+                      sectionData={row}
+                      referenceData={referenceData}
+                      userRole={userRole}
+                      t={t}
+                    />
                   );
                 })}
               </View>
@@ -549,6 +628,7 @@ function DynamicSectionCard({ api, schema, section, expanded, onToggle, userRole
               onChange={canEdit ? handleFieldChange : undefined}
               sectionData={canEdit ? formData : section.data}
               referenceData={referenceData}
+              userRole={userRole}
               t={t}
             />
           ))}
@@ -784,8 +864,10 @@ const fs = StyleSheet.create({
   checkBoxChecked: { backgroundColor: '#25408D', borderColor: '#25408D' },
 
   repeaterContainer: { gap: 8 },
-  repeaterRow: { backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#E5E7EB', gap: 6 },
-  repeaterRowNum: { fontSize: 11, fontWeight: '700', color: '#9CA3AF', marginBottom: 4 },
+  repeaterRow: { backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#E5E7EB', gap: 8 },
+  repeaterRowHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  repeaterRowNum: { fontSize: 11, fontWeight: '700', color: '#9CA3AF' },
+  repeaterRemoveBtn: { padding: 4, borderRadius: 6 },
   repeaterField: { gap: 2 },
   repeaterFieldLabel: { fontSize: 11, fontWeight: '600', color: '#6B7280' },
   repeaterFieldValue: { fontSize: 14, color: '#111827' },
@@ -794,7 +876,18 @@ const fs = StyleSheet.create({
   repeaterAddBtn: { alignItems: 'center', paddingVertical: 10, borderRadius: 8, backgroundColor: '#EBF0FF' },
   repeaterAddText: { fontSize: 13, fontWeight: '600', color: '#25408D' },
 
-  richContainer: { borderRadius: 8, borderWidth: 1, borderColor: '#D1D5DB', overflow: 'hidden', backgroundColor: '#FFF' },
-  richToolbar: { backgroundColor: '#F9FAFB', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', height: 40 },
-  richEditor: { minHeight: 120 },
+  richContainer: { borderRadius: 10, borderWidth: 1, borderColor: '#D1D5DB', overflow: 'hidden', backgroundColor: '#FFF' },
+  richToolbar: {
+    flexDirection: 'row', alignItems: 'center', gap: 2,
+    paddingHorizontal: 6, paddingVertical: 6,
+    backgroundColor: '#F9FAFB', borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
+  },
+  toolBtn: { width: 32, height: 32, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+  toolBtnActive: { backgroundColor: '#EBF0FF' },
+  aiBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#7C3AED',
+  },
+  richEditor: { minHeight: 140 },
 });

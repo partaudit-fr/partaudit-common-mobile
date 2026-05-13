@@ -1,3 +1,7 @@
+// Lib utilities (shared by mobile-client + mobile-pro)
+export { resolveDeepLink, parseDeepLinkPath } from './lib/deeplink';
+export type { DeepLinkRoute, RouteMap, RouteMatch } from './lib/deeplink';
+
 // API
 export { createApiClient, SessionExpiredError } from './api/createApiClient';
 export type { ApiClient, ApiClientConfig, TraceHooks } from './api/createApiClient';
