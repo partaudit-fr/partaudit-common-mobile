@@ -31,7 +31,9 @@ interface FormSection {
 
 interface FormInstance {
   id: string;
-  status?: string;
+  // Required to match DynamicForm's FormInstance contract — the backend
+  // always returns a status string, so no need to widen to optional.
+  status: string;
   sections?: FormSection[];
   template?: any;
 }
@@ -186,7 +188,7 @@ export default function DeviationReportScreen({
         >
           <DynamicForm
             api={api}
-            instance={instance}
+            instance={instance as any}
             template={template}
             context={context}
             userRole={userRole}

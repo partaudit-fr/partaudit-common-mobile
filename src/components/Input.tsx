@@ -43,9 +43,9 @@ export function Input({
           }}
           style={[
             styles.input,
-            icon && styles.inputWithIcon,
-            isFocused && styles.inputFocused,
-            error && styles.inputError,
+            icon ? styles.inputWithIcon : null,
+            isFocused ? styles.inputFocused : null,
+            error ? styles.inputError : null,
           ]}
           {...props}
         />

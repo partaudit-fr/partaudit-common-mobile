@@ -35,8 +35,8 @@ interface WebSocketProviderProps {
 export function WebSocketProvider({ children, wsUrl }: WebSocketProviderProps) {
   const { user, getAccessToken } = useAuth();
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const heartbeatRef = useRef<ReturnType<typeof setInterval>>();
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   const {
     handleNewMessage,

@@ -39,7 +39,7 @@ const passwordMatch = (data: { password: string; confirm_password: string }) =>
 
 const passwordMatchError = {
   message: 'Les mots de passe ne correspondent pas',
-  path: ['confirm_password'] as const,
+  path: ['confirm_password'],
 };
 
 export const registerClientSchema = registerClientBaseSchema.refine(

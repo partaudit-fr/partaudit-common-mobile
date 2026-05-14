@@ -32,7 +32,10 @@ function getInitials(name?: string): string {
 export function Avatar({ imageUrl, name, size = 'md', online, style }: AvatarProps) {
   const s = sizeValues[size];
 
-  const containerSize: ViewStyle = {
+  // Untyped so it can be spread into both <View style> (ViewStyle) and
+  // <Image style> (ImageStyle) — only `overflow` differs between the two
+  // and we don't set it here.
+  const containerSize = {
     width: s.container,
     height: s.container,
     borderRadius: s.container / 2,
