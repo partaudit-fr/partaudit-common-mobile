@@ -40,6 +40,17 @@ function stripLocale(p: string): string {
   return p.replace(/^\/(fr|en)\//, '/');
 }
 
+// Strict allowlist — matches the apex domain or any subdomain only,
+// rejecting prefix-impersonation attacks like `evilpartaudit.fr` or
+// `devpartaudit.fr` (the old dev domain we no longer own). Naive
+// `endsWith('partaudit.fr')` would let those through.
+const ALLOWED_APEX = ['partaudit.fr', 'devpartaudit.xyz'];
+function isAllowedHost(hostname: string): boolean {
+  return ALLOWED_APEX.some(
+    (apex) => hostname === apex || hostname.endsWith('.' + apex),
+  );
+}
+
 function buildParams(m: RegExpMatchArray, names?: string[]): Record<string, string> {
   if (!names) return {};
   const out: Record<string, string> = {};
@@ -53,11 +64,15 @@ function buildParams(m: RegExpMatchArray, names?: string[]): Record<string, stri
 /** Parse the URL the backend hands us. Accepts:
  *   - https://partaudit.fr/...           (Universal Link, client domain)
  *   - https://pro.partaudit.fr/...       (Universal Link, pro domain)
- *   - https://devpartaudit.fr/...        (Universal Link, dev client)
- *   - https://pro.devpartaudit.fr/...    (Universal Link, dev pro)
+ *   - https://devpartaudit.xyz/...       (Universal Link, dev client)
+ *   - https://pro.devpartaudit.xyz/...   (Universal Link, dev pro)
  *   - partaudit://path/...               (legacy custom scheme)
  *   - partauditpro://path/...            (legacy pro scheme)
  *   - screen:param                       (legacy mobile_route format)
+ *
+ * `devpartaudit.fr` was the old dev domain; it's no longer owned by us
+ * and is intentionally dropped from the whitelist to avoid resolving
+ * crafted links from a future squatter.
  */
 export function parseDeepLinkPath(url: string): string | null {
   if (!url) return null;
@@ -74,11 +89,7 @@ export function parseDeepLinkPath(url: string): string | null {
 
   try {
     const parsed = new URL(url);
-    if (
-      parsed.hostname.endsWith('partaudit.fr') ||
-      parsed.hostname.endsWith('devpartaudit.fr') ||
-      parsed.hostname.endsWith('devpartaudit.xyz')
-    ) {
+    if (isAllowedHost(parsed.hostname)) {
       return stripLocale(parsed.pathname);
     }
   } catch {

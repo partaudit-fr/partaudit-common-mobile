@@ -49,7 +49,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 interface AuthProviderProps {
   children: React.ReactNode;
-  /** Base URL for the auth API (e.g. https://api.devpartaudit.fr/app/partaudit) */
+  /** Base URL for the auth API (e.g. https://api.devpartaudit.xyz/app/partaudit) */
   apiBaseUrl: string;
   /** Called after logout to redirect to login screen */
   onLogout?: () => void;

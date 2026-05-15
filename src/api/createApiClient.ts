@@ -45,7 +45,7 @@ export interface TraceHooks {
 }
 
 export interface ApiClientConfig {
-  /** Base URL for the main API (e.g. https://api.devpartaudit.fr/app/partaudit) */
+  /** Base URL for the main API (e.g. https://api.devpartaudit.xyz/app/partaudit) */
   baseUrl: string;
   /** Returns the current access token, refreshing if needed */
   getAccessToken: () => Promise<string | null>;

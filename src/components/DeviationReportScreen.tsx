@@ -218,7 +218,7 @@ function Counter({ dotColor, label }: { dotColor: string; label: string }) {
 function getApiBaseUrl(_api: ApiClient): string {
   return (
     (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) ||
-    'https://api.devpartaudit.fr/app/partaudit'
+    'https://api.devpartaudit.xyz/app/partaudit'
   );
 }
 
