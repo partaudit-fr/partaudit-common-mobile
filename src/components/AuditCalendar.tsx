@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, Dimensions } from 'react-native';
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 
 type SlotStatus = 'available' | 'booked' | 'unavailable';
 type Period = 'am' | 'pm';
@@ -27,11 +28,27 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 // 5 columns (weekdays only) with padding
 const CELL_WIDTH = Math.floor((SCREEN_WIDTH - 64) / 5);
 
-const DAYS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'];
-const MONTHS_FR = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
-];
+// Self-contained bilingual labels (same approach as reservationStatuses):
+// the lib picks fr/en off the consuming app's i18n language, so no shared
+// translation keys need to exist in every consumer.
+const I18N = {
+  fr: {
+    days: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'],
+    daysShort: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'],
+    months: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
+    available: 'Disponible', selected: 'Sélectionné', unavailable: 'Indisponible',
+    weekdaysOnly: 'Jours ouvrés uniquement (lun-ven)',
+    start: 'Début', end: 'Fin', am: 'Matin', pm: 'Après-midi', reset: 'Réinitialiser',
+  },
+  en: {
+    days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+    daysShort: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    available: 'Available', selected: 'Selected', unavailable: 'Unavailable',
+    weekdaysOnly: 'Weekdays only (Mon–Fri)',
+    start: 'Start', end: 'End', am: 'Morning', pm: 'Afternoon', reset: 'Reset',
+  },
+} as const;
 
 const HOLIDAYS_2026 = new Set([
   '2026-01-01', '2026-04-06', '2026-05-01', '2026-05-14',
@@ -148,6 +165,8 @@ function groupIntoWeeks(days: Date[]): Date[][] {
 }
 
 export default function AuditCalendar({ slots, onSelectionChange }: AuditCalendarProps) {
+  const { i18n } = useTranslation();
+  const L = I18N[(i18n.language || 'fr').startsWith('en') ? 'en' : 'fr'];
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -203,8 +222,8 @@ export default function AuditCalendar({ slots, onSelectionChange }: AuditCalenda
 
   const formatSelDate = (dateStr: string, period: Period) => {
     const d = new Date(dateStr);
-    const dayName = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'][d.getDay()];
-    return `${dayName} ${d.getDate()} ${MONTHS_FR[d.getMonth()].substring(0, 3)}`;
+    const dayName = L.daysShort[d.getDay()];
+    return `${dayName} ${d.getDate()} ${L.months[d.getMonth()].substring(0, 3)}`;
   };
 
   return (
@@ -214,7 +233,7 @@ export default function AuditCalendar({ slots, onSelectionChange }: AuditCalenda
         <Pressable testID="calendar-prev-month" onPress={prevMonth} disabled={!canGoPrev} hitSlop={12} style={styles.monthNavBtn}>
           <ChevronLeft size={22} color={canGoPrev ? '#25408D' : '#D1D5DB'} />
         </Pressable>
-        <Text style={styles.monthTitle}>{MONTHS_FR[viewMonth]} {viewYear}</Text>
+        <Text style={styles.monthTitle}>{L.months[viewMonth]} {viewYear}</Text>
         <Pressable testID="calendar-next-month" onPress={nextMonth} hitSlop={12} style={styles.monthNavBtn}>
           <ChevronRight size={22} color="#25408D" />
         </Pressable>
@@ -224,23 +243,23 @@ export default function AuditCalendar({ slots, onSelectionChange }: AuditCalenda
       <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#ECFDF5' }]} />
-          <Text style={styles.legendText}>Disponible</Text>
+          <Text style={styles.legendText}>{L.available}</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#25408D' }]} />
-          <Text style={styles.legendText}>Sélectionné</Text>
+          <Text style={styles.legendText}>{L.selected}</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#F3F4F6' }]} />
-          <Text style={styles.legendText}>Indisponible</Text>
+          <Text style={styles.legendText}>{L.unavailable}</Text>
         </View>
       </View>
 
-      <Text style={styles.weekdaysOnly}>Jours ouvrés uniquement (lun-ven)</Text>
+      <Text style={styles.weekdaysOnly}>{L.weekdaysOnly}</Text>
 
       {/* Day headers */}
       <View style={styles.dayHeaders}>
-        {DAYS_FR.map((d) => (
+        {L.days.map((d) => (
           <View key={d} style={styles.dayHeaderCell}>
             <Text style={styles.dayHeader}>{d}</Text>
           </View>
@@ -331,24 +350,24 @@ export default function AuditCalendar({ slots, onSelectionChange }: AuditCalenda
         <View style={styles.selectionSummary}>
           <View style={styles.selectionRow}>
             <View style={styles.selectionBlock}>
-              <Text style={styles.selectionLabel}>Début</Text>
+              <Text style={styles.selectionLabel}>{L.start}</Text>
               <Text style={styles.selectionDate}>{formatSelDate(startDate, startPeriod)}</Text>
-              <Text style={styles.selectionPeriod}>{startPeriod === 'am' ? 'Matin' : 'Après-midi'}</Text>
+              <Text style={styles.selectionPeriod}>{startPeriod === 'am' ? L.am : L.pm}</Text>
             </View>
             {endDate && (
               <>
                 <Text style={styles.selectionArrow}>→</Text>
                 <View style={styles.selectionBlock}>
-                  <Text style={styles.selectionLabel}>Fin</Text>
+                  <Text style={styles.selectionLabel}>{L.end}</Text>
                   <Text style={styles.selectionDate}>{formatSelDate(endDate, endPeriod)}</Text>
-                  <Text style={styles.selectionPeriod}>{endPeriod === 'am' ? 'Matin' : 'Après-midi'}</Text>
+                  <Text style={styles.selectionPeriod}>{endPeriod === 'am' ? L.am : L.pm}</Text>
                 </View>
               </>
             )}
           </View>
           <Pressable onPress={handleReset} hitSlop={12} style={styles.resetBtn}>
             <RotateCcw size={16} color="#25408D" />
-            <Text style={styles.resetText}>Réinitialiser</Text>
+            <Text style={styles.resetText}>{L.reset}</Text>
           </Pressable>
         </View>
       )}
