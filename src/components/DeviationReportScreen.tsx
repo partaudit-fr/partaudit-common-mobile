@@ -96,7 +96,7 @@ export default function DeviationReportScreen({
   const instance = instances[0] || null;
   const template = data?.template || instance?.template;
   const context = data?.context;
-  const referenceData = data?.reference_data || data?.referenceData;
+  const referenceData = data?.reference_data;
   const sections = instance?.sections || [];
 
   const validated = sections.filter((sec) => sec.status === 'validated').length;

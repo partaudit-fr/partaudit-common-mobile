@@ -71,7 +71,7 @@ export default function MessagesList({ api, onOpenConversation, onLoginPress }: 
       name: c.other_participant_name || c.name || '—',
       image: c.other_participant_image || c.image || '',
       lastMessage: c.last_message_preview || c.lastMessage || '',
-      lastMessageAt: c.last_message_at || c.lastMessageAt || '',
+      lastMessageAt: c.last_message_at || '',
       unreadCount: c.unread_count || 0,
       isPinned: !!c.pinned_at,
     }));

@@ -849,7 +849,7 @@ export default function DynamicForm({ api, instance, template, context, userRole
         if (!ss.availability) return true;
         if (ss.availability.always) return true;
         // Workflow-created sections: show only if section exists
-        const createdBy = ss.availability.createdBy || ss.availability.created_by;
+        const createdBy = ss.availability.created_by;
         if (createdBy === 'workflow') {
           return sections.some((s) => getSectionCode(s) === ss.code);
         }
