@@ -5,7 +5,7 @@
  * Props:
  *  - instance: FormInstance (sections with data + status)
  *  - template: FormTemplate (schema with section/field definitions, permissions, visibility)
- *  - context: InstanceContext (isEvaluator, permissions, etc.)
+ *  - context: InstanceContext (is_evaluator, permissions, etc.)
  *  - userRole: 'client' | 'evaluator'
  *  - referenceData: Record<string, any> for reference/select fields
  *  - onRefresh: () => void — called after save/submit/validate to reload data
@@ -34,12 +34,12 @@ import type { ApiClient } from '../api/createApiClient';
 // share the same form implementation.
 function useSectionApi(api: ApiClient) {
   return useMemo(() => ({
-    saveSectionDraft: (sectionId: string, body: any) =>
-      api.put<any>(`/v2/deviation-reports/sections/${sectionId}`, body),
-    submitSection: (sectionId: string, body?: any) =>
-      api.post<any>(`/v2/deviation-reports/sections/${sectionId}/submit`, body ?? {}),
-    validateSection: (sectionId: string) =>
-      api.post<any>(`/v2/deviation-reports/sections/${sectionId}/validate`, {}),
+    saveSectionDraft: (section_id: string, body: any) =>
+      api.put<any>(`/v2/deviation-reports/sections/${section_id}`, body),
+    submitSection: (section_id: string, body?: any) =>
+      api.post<any>(`/v2/deviation-reports/sections/${section_id}/submit`, body ?? {}),
+    validateSection: (section_id: string) =>
+      api.post<any>(`/v2/deviation-reports/sections/${section_id}/validate`, {}),
   }), [api]);
 }
 
@@ -80,12 +80,10 @@ interface SectionSchema {
 interface FormSection {
   id: string;
   section_code?: string;
-  sectionCode?: string;
   data: Record<string, any>;
   status: string;
   attachments?: any[];
   rejection_reason?: string;
-  rejectionReason?: string;
 }
 
 interface FormInstance {
@@ -98,8 +96,8 @@ interface FormInstance {
 }
 
 interface InstanceContext {
-  isEvaluator: boolean;
-  isFollowup: boolean;
+  is_evaluator: boolean;
+  is_followup: boolean;
   permissions: string[];
 }
 
@@ -119,7 +117,7 @@ const STATUS_COLORS: Record<string, { dot: string; bg: string; text: string; lab
 // ── Helpers ──
 
 function getSectionCode(section: FormSection): string {
-  return section.sectionCode || section.section_code || '';
+  return section.section_code || '';
 }
 
 function evaluateCondition(condition: Record<string, any>, sectionData: Record<string, any>): boolean {
@@ -773,10 +771,10 @@ function DynamicSectionCard({ api, schema, section, expanded, onToggle, userRole
           {!!schema.description && <Text style={s.sectionDesc}>{schema.description}</Text>}
 
           {/* Rejection reason */}
-          {(status === 'rejected' || status === 'revision_requested') && (section.rejection_reason || section.rejectionReason) && (
+          {(status === 'rejected' || status === 'revision_requested') && (section.rejection_reason) && (
             <View style={s.rejectionBox}>
               <AlertTriangle size={14} color="#DC2626" />
-              <Text style={s.rejectionText}>{section.rejection_reason || section.rejectionReason}</Text>
+              <Text style={s.rejectionText}>{section.rejection_reason}</Text>
             </View>
           )}
 

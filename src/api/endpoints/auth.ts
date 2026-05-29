@@ -32,17 +32,17 @@ export function createAuthEndpoints(api: ApiClient) {
     register: (data: RegisterRequest) =>
       api.post<User>('/v1/register', data),
 
-    refreshToken: (refreshToken: string) =>
+    refresh_token: (refresh_token: string) =>
       api.post<{ access_token: string; access_token_expires_at: string }>(
         '/v1/refresh-access-token',
-        { refresh_token: refreshToken },
+        { refresh_token: refresh_token },
       ),
 
-    verifyEmail: (userId: string, code: string) =>
-      api.get<{ success: boolean }>(`/v1/users/${userId}/code/${code}/validate`),
+    verifyEmail: (user_id: string, code: string) =>
+      api.get<{ success: boolean }>(`/v1/users/${user_id}/code/${code}/validate`),
 
-    renewVerificationCode: (userId: string) =>
-      api.post<{ success: boolean }>(`/v1/users/${userId}/renew-code`, {}),
+    renewVerificationCode: (user_id: string) =>
+      api.post<{ success: boolean }>(`/v1/users/${user_id}/renew-code`, {}),
 
     forgotPassword: (data: ForgotPasswordRequest) =>
       api.post<{ success: boolean }>('/v1/forgot-password', data),

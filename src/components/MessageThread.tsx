@@ -22,8 +22,8 @@ interface Msg {
   senderId: number;
   senderName: string;
   content: string;
-  createdAt: string;
-  readAt?: string;
+  created_at: string;
+  read_at?: string;
 }
 
 function transform(m: any): Msg {
@@ -32,8 +32,8 @@ function transform(m: any): Msg {
     senderId: Number(m.sender_id ?? 0),
     senderName: m.sender_name || '',
     content: m.content || '',
-    createdAt: m.created_at || '',
-    readAt: m.read_at || undefined,
+    created_at: m.created_at || '',
+    read_at: m.read_at || undefined,
   };
 }
 
@@ -133,9 +133,9 @@ export default function MessageThread({ api, conversationId: id, onBack }: Messa
     const out: Array<{ kind: 'msg'; m: Msg } | { kind: 'sep'; key: string; label: string }> = [];
     let lastDay = '';
     messages.forEach((m) => {
-      const d = new Date(m.createdAt).toDateString();
+      const d = new Date(m.created_at).toDateString();
       if (d !== lastDay) {
-        out.push({ kind: 'sep', key: `sep-${d}`, label: formatDateSeparator(m.createdAt, i18n.language) });
+        out.push({ kind: 'sep', key: `sep-${d}`, label: formatDateSeparator(m.created_at, i18n.language) });
         lastDay = d;
       }
       out.push({ kind: 'msg', m });
@@ -194,7 +194,7 @@ export default function MessageThread({ api, conversationId: id, onBack }: Messa
                   <View style={[s.bubble, mine ? s.bubbleMine : s.bubbleOther]}>
                     <Text style={[s.bubbleContent, mine && { color: '#FFF' }]}>{m.content}</Text>
                     <Text style={[s.bubbleTime, mine && { color: 'rgba(255,255,255,0.7)' }]}>
-                      {formatTime(m.createdAt)}
+                      {formatTime(m.created_at)}
                     </Text>
                   </View>
                 </View>

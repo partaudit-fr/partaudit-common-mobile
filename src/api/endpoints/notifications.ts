@@ -19,9 +19,9 @@ export interface NotificationListResponse {
 
 export function createNotificationEndpoints(api: ApiClient) {
   return {
-    list: (page = 1, pageSize = 20) =>
+    list: (page = 1, page_size = 20) =>
       api.getNotifications<NotificationListResponse>(
-        `/v1/notifications?page=${page}&page_size=${pageSize}`,
+        `/v1/notifications?page=${page}&page_size=${page_size}`,
       ),
 
     // Backend (huma-based notifications service) registers /read and

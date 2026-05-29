@@ -10,8 +10,8 @@ import type {
 } from '../types/messaging';
 
 interface TypingUser {
-  userId: number;
-  userName?: string;
+  user_id: number;
+  user_name?: string;
   timestamp: number;
 }
 
@@ -54,14 +54,14 @@ interface MessagingActions {
   getPagination: (conversationId: string) => ConversationPagination;
   setLoadingMore: (conversationId: string, loading: boolean) => void;
   incrementPage: (conversationId: string) => void;
-  setUserTyping: (conversationId: string, userId: number, userName?: string) => void;
-  removeUserTyping: (conversationId: string, userId: number) => void;
+  setUserTyping: (conversationId: string, user_id: number, user_name?: string) => void;
+  removeUserTyping: (conversationId: string, user_id: number) => void;
   clearTypingUsers: (conversationId: string) => void;
   handleNewMessage: (payload: WSNewMessagePayload) => void;
   handleMessageRead: (payload: WSMessageReadPayload) => void;
   handleTyping: (payload: WSTypingPayload, isTyping: boolean) => void;
   handlePresence: (payload: WSPresencePayload) => void;
-  isUserOnline: (userId: number) => boolean;
+  isUserOnline: (user_id: number) => boolean;
   setLoadingConversations: (loading: boolean) => void;
   setLoadingMessages: (loading: boolean) => void;
   setSending: (sending: boolean) => void;
@@ -72,11 +72,11 @@ interface MessagingActions {
   reset: () => void;
   setReplyingTo: (message: Message | null) => void;
   setEditingMessage: (message: Message | null) => void;
-  updateMessage: (conversationId: string, messageId: string, updates: Partial<Message>) => void;
-  deleteMessage: (conversationId: string, messageId: string) => void;
+  updateMessage: (conversationId: string, message_id: string, updates: Partial<Message>) => void;
+  deleteMessage: (conversationId: string, message_id: string) => void;
   togglePinConversation: (conversationId: string) => void;
-  addReaction: (conversationId: string, messageId: string, emoji: string, userId: number) => void;
-  removeReaction: (conversationId: string, messageId: string, emoji: string, userId: number) => void;
+  addReaction: (conversationId: string, message_id: string, emoji: string, user_id: number) => void;
+  removeReaction: (conversationId: string, message_id: string, emoji: string, user_id: number) => void;
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: MessageSearchResult[]) => void;
   setIsSearching: (searching: boolean) => void;
@@ -216,26 +216,26 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
     });
   },
 
-  setUserTyping: (conversationId, userId, userName) => {
+  setUserTyping: (conversationId, user_id, user_name) => {
     set((state) => {
       const existingTypers = state.typingUsers[conversationId] || [];
-      const filtered = existingTypers.filter((t) => t.userId !== userId);
+      const filtered = existingTypers.filter((t) => t.user_id !== user_id);
       return {
         typingUsers: {
           ...state.typingUsers,
-          [conversationId]: [...filtered, { userId, userName, timestamp: Date.now() }],
+          [conversationId]: [...filtered, { user_id, user_name, timestamp: Date.now() }],
         },
       };
     });
   },
 
-  removeUserTyping: (conversationId, userId) => {
+  removeUserTyping: (conversationId, user_id) => {
     set((state) => {
       const existingTypers = state.typingUsers[conversationId] || [];
       return {
         typingUsers: {
           ...state.typingUsers,
-          [conversationId]: existingTypers.filter((t) => t.userId !== userId),
+          [conversationId]: existingTypers.filter((t) => t.user_id !== user_id),
         },
       };
     });
@@ -326,9 +326,9 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
 
       if (payload.user_statuses) {
         Object.entries(payload.user_statuses).forEach(([id, online]) => {
-          const userId = Number(id);
-          if (online) newOnlineUsers.add(userId);
-          else newOnlineUsers.delete(userId);
+          const user_id = Number(id);
+          if (online) newOnlineUsers.add(user_id);
+          else newOnlineUsers.delete(user_id);
         });
       }
 
@@ -336,7 +336,7 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
     });
   },
 
-  isUserOnline: (userId) => get().onlineUsers.has(userId),
+  isUserOnline: (user_id) => get().onlineUsers.has(user_id),
 
   setLoadingConversations: (loading) => set({ isLoadingConversations: loading }),
   setLoadingMessages: (loading) => set({ isLoadingMessages: loading }),
@@ -364,7 +364,7 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
   setReplyingTo: (message) => set({ replyingTo: message, editingMessage: null }),
   setEditingMessage: (message) => set({ editingMessage: message, replyingTo: null }),
 
-  updateMessage: (conversationId, messageId, updates) => {
+  updateMessage: (conversationId, message_id, updates) => {
     set((state) => {
       const messages = state.messagesByConversation[conversationId];
       if (!messages) return state;
@@ -372,14 +372,14 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
         messagesByConversation: {
           ...state.messagesByConversation,
           [conversationId]: messages.map((msg) =>
-            msg.id === messageId ? { ...msg, ...updates } : msg,
+            msg.id === message_id ? { ...msg, ...updates } : msg,
           ),
         },
       };
     });
   },
 
-  deleteMessage: (conversationId, messageId) => {
+  deleteMessage: (conversationId, message_id) => {
     set((state) => {
       const messages = state.messagesByConversation[conversationId];
       if (!messages) return state;
@@ -387,7 +387,7 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
         messagesByConversation: {
           ...state.messagesByConversation,
           [conversationId]: messages.map((msg) =>
-            msg.id === messageId
+            msg.id === message_id
               ? { ...msg, deleted_at: new Date().toISOString(), content: '' }
               : msg,
           ),
@@ -415,7 +415,7 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
     });
   },
 
-  addReaction: (conversationId, messageId, emoji, userId) => {
+  addReaction: (conversationId, message_id, emoji, user_id) => {
     set((state) => {
       const messages = state.messagesByConversation[conversationId];
       if (!messages) return state;
@@ -423,11 +423,11 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
         messagesByConversation: {
           ...state.messagesByConversation,
           [conversationId]: messages.map((msg) => {
-            if (msg.id !== messageId) return msg;
+            if (msg.id !== message_id) return msg;
 
             let reactions = (msg.reactions || [])
               .map((r) => {
-                const newUserIds = r.user_ids.filter((id) => Number(id) !== Number(userId));
+                const newUserIds = r.user_ids.filter((id) => Number(id) !== Number(user_id));
                 if (newUserIds.length === 0) return null;
                 return { ...r, count: newUserIds.length, user_ids: newUserIds };
               })
@@ -436,9 +436,9 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
             const existingReaction = reactions.find((r) => r.emoji === emoji);
             if (existingReaction) {
               existingReaction.count += 1;
-              existingReaction.user_ids = [...existingReaction.user_ids, userId];
+              existingReaction.user_ids = [...existingReaction.user_ids, user_id];
             } else {
-              reactions = [...reactions, { emoji, count: 1, user_ids: [userId] }];
+              reactions = [...reactions, { emoji, count: 1, user_ids: [user_id] }];
             }
             return { ...msg, reactions };
           }),
@@ -447,7 +447,7 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
     });
   },
 
-  removeReaction: (conversationId, messageId, emoji, userId) => {
+  removeReaction: (conversationId, message_id, emoji, user_id) => {
     set((state) => {
       const messages = state.messagesByConversation[conversationId];
       if (!messages) return state;
@@ -455,11 +455,11 @@ export const useMessagingStore = create<MessagingState & MessagingActions>((set,
         messagesByConversation: {
           ...state.messagesByConversation,
           [conversationId]: messages.map((msg) => {
-            if (msg.id !== messageId) return msg;
+            if (msg.id !== message_id) return msg;
             const reactions = (msg.reactions || [])
               .map((r) => {
                 if (r.emoji !== emoji) return r;
-                const newUserIds = r.user_ids.filter((id) => Number(id) !== Number(userId));
+                const newUserIds = r.user_ids.filter((id) => Number(id) !== Number(user_id));
                 if (newUserIds.length === 0) return null;
                 return { ...r, count: newUserIds.length, user_ids: newUserIds };
               })

@@ -26,8 +26,8 @@ export interface Folder {
 
 export function createDocumentEndpoints(api: ApiClient) {
   return {
-    listDocuments: (folderId?: number) => {
-      const params = folderId ? `?folder_id=${folderId}` : '';
+    listDocuments: (folder_id?: number) => {
+      const params = folder_id ? `?folder_id=${folder_id}` : '';
       return api.get<{ documents: Document[] }>(`/v1/documents${params}`);
     },
 
@@ -43,8 +43,8 @@ export function createDocumentEndpoints(api: ApiClient) {
     listFolders: () =>
       api.get<{ folders: Folder[] }>('/v1/folders'),
 
-    createFolder: (name: string, parentId?: number) =>
-      api.post<Folder>('/v1/folders', { name, parent_id: parentId }),
+    createFolder: (name: string, parent_id?: number) =>
+      api.post<Folder>('/v1/folders', { name, parent_id: parent_id }),
 
     deleteFolder: (id: number) =>
       api.del<{ success: boolean }>(`/v1/folders/${id}`),
@@ -52,7 +52,7 @@ export function createDocumentEndpoints(api: ApiClient) {
     shareDocument: (documentId: number, email: string) =>
       api.post<{ success: boolean }>(`/v1/documents/${documentId}/share`, { email }),
 
-    shareFolder: (folderId: number, email: string) =>
-      api.post<{ success: boolean }>(`/v1/folders/${folderId}/share`, { email }),
+    shareFolder: (folder_id: number, email: string) =>
+      api.post<{ success: boolean }>(`/v1/folders/${folder_id}/share`, { email }),
   };
 }

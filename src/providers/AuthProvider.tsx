@@ -71,14 +71,14 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
 
   async function restoreSession() {
     try {
-      const [refreshToken, refreshExpiresAt, userData] = await Promise.all([
+      const [refresh_token, refreshExpiresAt, userData] = await Promise.all([
         SecureStore.getItemAsync(TOKEN_KEYS.REFRESH_TOKEN),
         SecureStore.getItemAsync(TOKEN_KEYS.REFRESH_EXPIRES),
         SecureStore.getItemAsync(TOKEN_KEYS.USER_DATA),
       ]);
 
       // No refresh token = never logged in OR explicitly logged out.
-      if (!refreshToken || !userData) {
+      if (!refresh_token || !userData) {
         setState({ user: null, isAuthenticated: false, isLoading: false });
         return;
       }
@@ -147,12 +147,12 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
   }, [onLogout]);
 
   const getAccessToken = useCallback(async (): Promise<string | null> => {
-    const [accessToken, accessExpiresAt] = await Promise.all([
+    const [access_token, accessExpiresAt] = await Promise.all([
       SecureStore.getItemAsync(TOKEN_KEYS.ACCESS_TOKEN),
       SecureStore.getItemAsync(TOKEN_KEYS.ACCESS_EXPIRES),
     ]);
 
-    if (!accessToken) return null;
+    if (!access_token) return null;
 
     // If we can't confidently parse the expiry, return the token as-is
     // and let the backend reject it with 401 — same lazy-validation
@@ -161,7 +161,7 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
     const isExpired =
       expiresMs !== null && Date.now() >= expiresMs - EXPIRY_BUFFER_SECONDS * 1000;
 
-    if (!isExpired) return accessToken;
+    if (!isExpired) return access_token;
 
     // Token expired — refresh it
     if (refreshMutex.current) {
@@ -172,8 +172,8 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
 
     refreshMutex.current = true;
     try {
-      const refreshToken = await SecureStore.getItemAsync(TOKEN_KEYS.REFRESH_TOKEN);
-      if (!refreshToken) {
+      const refresh_token = await SecureStore.getItemAsync(TOKEN_KEYS.REFRESH_TOKEN);
+      if (!refresh_token) {
         await logout();
         return null;
       }
@@ -185,7 +185,7 @@ export function AuthProvider({ children, apiBaseUrl, onLogout }: AuthProviderPro
       const response = await fetch(`${apiBaseUrl}/refresh-access-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        body: JSON.stringify({ refresh_token: refresh_token }),
       });
 
       if (!response.ok) {

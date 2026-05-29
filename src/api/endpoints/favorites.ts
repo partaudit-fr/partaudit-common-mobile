@@ -16,13 +16,13 @@ export function createFavoritesEndpoints(api: ApiClient) {
     list: () =>
       api.get<{ favorites: Favorite[] }>('/v1/favorites'),
 
-    add: (providerId: number) =>
-      api.post<{ success: boolean }>('/v1/favorites', { provider_id: providerId }),
+    add: (provider_id: number) =>
+      api.post<{ success: boolean }>('/v1/favorites', { provider_id: provider_id }),
 
     remove: (favoriteId: number) =>
       api.del<{ success: boolean }>(`/v1/favorites/${favoriteId}`),
 
-    check: (providerId: number) =>
-      api.get<{ is_favorite: boolean }>(`/v1/favorites/check/${providerId}`),
+    check: (provider_id: number) =>
+      api.get<{ is_favorite: boolean }>(`/v1/favorites/check/${provider_id}`),
   };
 }

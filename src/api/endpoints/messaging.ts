@@ -27,9 +27,9 @@ export interface GetMessagesResponse {
 
 export function createMessagingEndpoints(api: ApiClient) {
   return {
-    getConversations: (page = 1, pageSize = 20) =>
+    getConversations: (page = 1, page_size = 20) =>
       api.get<{ conversations: Conversation[]; total: number }>(
-        `/v1/conversations?limit=${pageSize}&offset=${(page - 1) * pageSize}`,
+        `/v1/conversations?limit=${page_size}&offset=${(page - 1) * page_size}`,
       ),
 
     getConversation: (conversationId: string) =>
@@ -38,9 +38,9 @@ export function createMessagingEndpoints(api: ApiClient) {
     createConversation: (data: CreateConversationRequest) =>
       api.post<CreateConversationResponse>('/v1/conversations', data),
 
-    getMessages: (conversationId: string, page = 1, pageSize = 20) =>
+    getMessages: (conversationId: string, page = 1, page_size = 20) =>
       api.get<{ messages: Message[]; total: number }>(
-        `/v1/conversations/${conversationId}/messages?limit=${pageSize}&offset=${(page - 1) * pageSize}`,
+        `/v1/conversations/${conversationId}/messages?limit=${page_size}&offset=${(page - 1) * page_size}`,
       ),
 
     sendMessage: (conversationId: string, data: SendMessageRequest) =>
@@ -64,9 +64,9 @@ export function createMessagingEndpoints(api: ApiClient) {
       return api.get<SearchMessagesResponse>(`/v1/messages/search?${params.toString()}`);
     },
 
-    deleteMessage: (conversationId: string, messageId: string, forAll = false) =>
+    deleteMessage: (conversationId: string, message_id: string, forAll = false) =>
       api.del<{ success: boolean }>(
-        `/v1/conversations/${conversationId}/messages/${messageId}?for_all=${forAll}`,
+        `/v1/conversations/${conversationId}/messages/${message_id}?for_all=${forAll}`,
       ),
 
     pinConversation: (conversationId: string, pinned: boolean) =>
@@ -75,20 +75,20 @@ export function createMessagingEndpoints(api: ApiClient) {
         { pinned } as PinConversationRequest,
       ),
 
-    addReaction: (conversationId: string, messageId: string, emoji: string) =>
+    addReaction: (conversationId: string, message_id: string, emoji: string) =>
       api.post<{ success: boolean }>(
-        `/v1/conversations/${conversationId}/messages/${messageId}/reactions`,
+        `/v1/conversations/${conversationId}/messages/${message_id}/reactions`,
         { emoji } as AddReactionRequest,
       ),
 
-    removeReaction: (conversationId: string, messageId: string, emoji: string) =>
+    removeReaction: (conversationId: string, message_id: string, emoji: string) =>
       api.del<{ success: boolean }>(
-        `/v1/conversations/${conversationId}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`,
+        `/v1/conversations/${conversationId}/messages/${message_id}/reactions/${encodeURIComponent(emoji)}`,
       ),
 
-    editMessage: (conversationId: string, messageId: string, content: string) =>
+    editMessage: (conversationId: string, message_id: string, content: string) =>
       api.put<Message>(
-        `/v1/conversations/${conversationId}/messages/${messageId}`,
+        `/v1/conversations/${conversationId}/messages/${message_id}`,
         { content } as EditMessageRequest,
       ),
   };

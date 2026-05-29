@@ -52,16 +52,16 @@ export type PaymentStatus =
 
 export interface NormChapter {
   id: number;
-  normId: number;
+  norm_id: number;
   code: string;
   title: string;
   description?: string;
-  parentId?: number;
+  parent_id?: number;
   displayOrder: number;
-  isAuditable: boolean;
+  is_auditable: boolean;
   children?: NormChapter[];
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ReservationNormChapter {

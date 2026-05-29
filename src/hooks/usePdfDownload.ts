@@ -59,8 +59,8 @@ export function usePdfDownload({ getAccessToken, onPreviewUri }: UsePdfDownloadC
       if (raw.startsWith('{')) {
         const json = JSON.parse(raw);
         let base64Data = json.data || json.content || json.pdf || json.file;
-        if (!base64Data && json.downloadUrl) {
-          const dataUri = json.downloadUrl;
+        if (!base64Data && json.download_url) {
+          const dataUri = json.download_url;
           const commaIdx = dataUri.indexOf(',');
           base64Data = commaIdx !== -1 ? dataUri.substring(commaIdx + 1) : dataUri;
         }

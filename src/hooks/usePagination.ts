@@ -2,12 +2,12 @@ import { useState, useCallback } from 'react';
 
 interface PaginationOptions {
   initialPage?: number;
-  pageSize?: number;
+  page_size?: number;
 }
 
 interface PaginationResult {
   page: number;
-  pageSize: number;
+  page_size: number;
   offset: number;
   nextPage: () => void;
   prevPage: () => void;
@@ -16,7 +16,7 @@ interface PaginationResult {
 }
 
 export function usePagination(options: PaginationOptions = {}): PaginationResult {
-  const { initialPage = 1, pageSize = 20 } = options;
+  const { initialPage = 1, page_size = 20 } = options;
   const [page, setPage] = useState(initialPage);
 
   const nextPage = useCallback(() => setPage((p) => p + 1), []);
@@ -26,8 +26,8 @@ export function usePagination(options: PaginationOptions = {}): PaginationResult
 
   return {
     page,
-    pageSize,
-    offset: (page - 1) * pageSize,
+    page_size,
+    offset: (page - 1) * page_size,
     nextPage,
     prevPage,
     goToPage,

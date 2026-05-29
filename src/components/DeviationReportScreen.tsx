@@ -2,10 +2,10 @@
 // tinted hero header (icon + title + subtitle + progress) and per-section
 // status counters. Used by both mobile-client and mobile-pro for
 // changements-principaux / plan-audit / similar form-driven flows — the
-// only thing that varies is templateCode + hero color + userRole.
+// only thing that varies is template_code + hero color + userRole.
 //
 // Endpoint:
-//   GET /v2/deviation-reports/reservations/{reservationId}/instances?template_code={templateCode}
+//   GET /v2/deviation-reports/reservations/{reservation_id}/instances?template_code={template_code}
 //
 // PDF preview/share are wired through the shared usePdfDownload hook —
 // the consumer passes onPreviewUri so the host app routes to its own
@@ -48,8 +48,8 @@ interface FormInstancesResponse {
 
 export interface DeviationReportScreenProps {
   api: ApiClient;
-  reservationId: string;
-  templateCode: string;
+  reservation_id: string;
+  template_code: string;
   /** 'client' or 'evaluator' — the DynamicForm uses this for section permissions. */
   userRole?: string;
   /** Hero title (already translated). */
@@ -67,7 +67,7 @@ export interface DeviationReportScreenProps {
 }
 
 export default function DeviationReportScreen({
-  api, reservationId, templateCode, userRole = 'evaluator',
+  api, reservation_id, template_code, userRole = 'evaluator',
   title, subtitle, heroColor, HeroIcon = FileText,
   onBack, onPreviewPdf, readOnly = false,
 }: DeviationReportScreenProps) {
@@ -77,18 +77,18 @@ export default function DeviationReportScreen({
   const pdf = usePdfDownload({ getAccessToken, onPreviewUri: onPreviewPdf });
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['deviation-instances', reservationId, templateCode],
+    queryKey: ['deviation-instances', reservation_id, template_code],
     queryFn: async () => {
       try {
         return await api.get<FormInstancesResponse>(
-          `/v2/deviation-reports/reservations/${reservationId}/instances?template_code=${templateCode}`,
+          `/v2/deviation-reports/reservations/${reservation_id}/instances?template_code=${template_code}`,
         );
       } catch (err: any) {
         if (err?.status === 404) return null;
         throw err;
       }
     },
-    enabled: !!reservationId,
+    enabled: !!reservation_id,
     refetchOnMount: 'always',
   });
 
@@ -104,7 +104,7 @@ export default function DeviationReportScreen({
   const draft = sections.length - validated - submitted;
   const pct = sections.length > 0 ? Math.round((validated / sections.length) * 100) : 0;
 
-  const pdfUrl = instance
+  const pdf_url = instance
     ? `${getApiBaseUrl(api)}/v2/deviation-reports/instances/${instance.id}/download/pdf`
     : '';
 
@@ -121,7 +121,7 @@ export default function DeviationReportScreen({
               {pdf.downloading && <ActivityIndicator size="small" color="#FFF" />}
               <Pressable
                 style={s.iconBtn}
-                onPress={() => pdf.preview(pdfUrl, title)}
+                onPress={() => pdf.preview(pdf_url, title)}
                 disabled={pdf.downloading}
                 hitSlop={8}
               >
@@ -129,7 +129,7 @@ export default function DeviationReportScreen({
               </Pressable>
               <Pressable
                 style={s.iconBtn}
-                onPress={() => pdf.share(pdfUrl)}
+                onPress={() => pdf.share(pdf_url)}
                 disabled={pdf.downloading}
                 hitSlop={8}
               >

@@ -49,21 +49,21 @@ export function createProfileEndpoints(api: ApiClient) {
     updateProfile: (data: UpdateProfileRequest) =>
       api.put<Profile>('/v1/profile', data),
 
-    updateName: (firstName: string, lastName: string) =>
+    updateName: (first_name: string, last_name: string) =>
       api.put<{ success: boolean }>('/v1/profile/name', {
-        first_name: firstName,
-        last_name: lastName,
+        first_name: first_name,
+        last_name: last_name,
       }),
 
     updateAvatar: (formData: FormData) =>
       api.putFormData<{ image_url: string }>('/v1/profile/image', formData),
 
-    getProviderProfile: (providerId: number) =>
-      api.get<ProviderProfile>(`/v1/providers/${providerId}/profile`),
+    getProviderProfile: (provider_id: number) =>
+      api.get<ProviderProfile>(`/v1/providers/${provider_id}/profile`),
 
-    getProviderReviews: (providerId: number, page = 1, pageSize = 10) =>
+    getProviderReviews: (provider_id: number, page = 1, page_size = 10) =>
       api.get<{ reviews: Review[]; total: number }>(
-        `/v1/providers/${providerId}/reviews?page=${page}&page_size=${pageSize}`,
+        `/v1/providers/${provider_id}/reviews?page=${page}&page_size=${page_size}`,
       ),
   };
 }
