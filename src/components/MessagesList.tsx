@@ -57,12 +57,21 @@ export default function MessagesList({ api, onOpenConversation, onLoginPress }: 
     return `${d.getDate()}/${d.getMonth() + 1}`;
   };
 
-  const { data, isLoading, refetch, isRefetching } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['conversations'],
     queryFn: () => messaging.getConversations(),
     enabled: isAuthenticated,
     refetchOnMount: 'always',
   });
+  // Tracked separately from React Query's isRefetching so the pull-to-refresh
+  // spinner only shows when the user actually pulled — not on every background
+  // refetch (WS new_message invalidation, app focus, navigation return).
+  // Otherwise a brand-new message coming in looks like a phantom refresh.
+  const [userRefreshing, setUserRefreshing] = useState(false);
+  const onUserRefresh = async () => {
+    setUserRefreshing(true);
+    try { await refetch(); } finally { setUserRefreshing(false); }
+  };
 
   const conversations: ConvCard[] = useMemo(() => {
     const raw = (data as any)?.conversations || (data as any)?.items || (Array.isArray(data) ? data : []);
@@ -126,7 +135,7 @@ export default function MessagesList({ api, onOpenConversation, onLoginPress }: 
         <FlatList
           data={filtered}
           keyExtractor={(it, idx) => String(it.id ?? `conv-${idx}`)}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#25408D" />}
+          refreshControl={<RefreshControl refreshing={userRefreshing} onRefresh={onUserRefresh} tintColor="#25408D" />}
           ItemSeparatorComponent={() => <View style={s.separator} />}
           ListEmptyComponent={
             <View style={s.empty}>

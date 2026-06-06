@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useCallback } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useMessagingStore } from '../stores/messagingStore';
 import type {
   WSEvent,
@@ -34,6 +35,7 @@ interface WebSocketProviderProps {
 
 export function WebSocketProvider({ children, wsUrl }: WebSocketProviderProps) {
   const { user, getAccessToken } = useAuth();
+  const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
@@ -49,6 +51,48 @@ export function WebSocketProvider({ children, wsUrl }: WebSocketProviderProps) {
     setConnected,
     isConnected,
   } = useMessagingStore();
+
+  // Mirror WS push events into the React Query cache so screens bound to
+  // ['messages', id] / ['conversations'] update instantly without a refetch.
+  // Without this, the WS only feeds Zustand and the UI (React Query-bound)
+  // stays stale until a focus/navigation refetch — which surfaces as a
+  // phantom pull-to-refresh spinner.
+  const applyNewMessageToCache = useCallback((payload: WSNewMessagePayload) => {
+    const convId = String(payload.conversation_id);
+    const incoming = payload.message as any;
+
+    queryClient.setQueryData<any>(['messages', convId], (prev) => {
+      if (!prev) return prev;
+      const list = (prev as any)?.messages || [];
+      // Skip if we already have this id (echo of our own send + WS echo)
+      if (list.some((m: any) => String(m.id) === String(incoming.id))) return prev;
+      // Backend pagination is desc — prepend keeps order consistent.
+      return { ...prev, messages: [incoming, ...list] };
+    });
+
+    queryClient.setQueryData<any>(['conversations'], (prev) => {
+      if (!prev) return prev;
+      const raw = (prev as any)?.conversations || (prev as any)?.items;
+      if (!Array.isArray(raw)) return prev;
+      const idx = raw.findIndex((c: any) => String(c.id) === convId);
+      if (idx === -1) return prev;
+      const preview = String(incoming.content || '').slice(0, 100);
+      const updated = {
+        ...raw[idx],
+        last_message_preview: preview,
+        last_message_at: incoming.created_at,
+        // Only bump unread if the user isn't currently viewing this thread.
+        unread_count:
+          useMessagingStore.getState().currentConversationId === convId
+            ? 0
+            : (raw[idx].unread_count || 0) + 1,
+      };
+      const next = [updated, ...raw.filter((_: any, i: number) => i !== idx)];
+      return (prev as any).conversations
+        ? { ...prev, conversations: next }
+        : { ...prev, items: next };
+    });
+  }, [queryClient]);
 
   const connect = useCallback(async () => {
     if (!user) return;
@@ -74,9 +118,12 @@ export function WebSocketProvider({ children, wsUrl }: WebSocketProviderProps) {
         const wsEvent = JSON.parse(event.data) as WSEvent;
 
         switch (wsEvent.type) {
-          case 'new_message':
-            handleNewMessage(wsEvent.payload as WSNewMessagePayload);
+          case 'new_message': {
+            const p = wsEvent.payload as WSNewMessagePayload;
+            handleNewMessage(p);
+            applyNewMessageToCache(p);
             break;
+          }
           case 'message_read':
             handleMessageRead(wsEvent.payload as WSMessageReadPayload);
             break;
@@ -123,7 +170,7 @@ export function WebSocketProvider({ children, wsUrl }: WebSocketProviderProps) {
     ws.onerror = () => {
       ws.close();
     };
-  }, [user, wsUrl, getAccessToken]);
+  }, [user, wsUrl, getAccessToken, applyNewMessageToCache]);
 
   useEffect(() => {
     connect();
