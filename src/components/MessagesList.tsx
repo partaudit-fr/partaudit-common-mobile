@@ -10,7 +10,7 @@ import {
   StyleSheet, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, Pin, AlertCircle } from 'lucide-react-native';
+import { Search, Pin, MessageCircle, ShieldCheck, Clock, ChevronRight } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { ApiClient } from '../api/createApiClient';
@@ -102,9 +102,39 @@ export default function MessagesList({ api, onOpenConversation, onLoginPress }: 
     return (
       <View style={s.root}>
         <View style={[s.header, { paddingTop: insets.top + 8 }]}><Text style={s.headerTitle}>{t('messages.title')}</Text></View>
-        <View style={s.empty}>
-          <AlertCircle size={40} color="#D1D5DB" />
-          <Text style={s.emptyTitle}>{t('messages.loginRequired')}</Text>
+        <View style={s.guestScroll}>
+          <View style={s.guestHero}>
+            <View style={s.guestIconRing}>
+              <View style={s.guestIconCircle}>
+                <MessageCircle size={32} color="#25408D" />
+              </View>
+            </View>
+            <Text style={s.guestTitle}>{t('messages.loginRequired')}</Text>
+            <Text style={s.guestDesc}>{t('messages.loginRequiredDesc')}</Text>
+          </View>
+
+          <View style={s.guestPerks}>
+            {[
+              { icon: <MessageCircle size={18} color="#25408D" />, label: t('messages.guestPerk1') },
+              { icon: <ShieldCheck size={18} color="#25408D" />, label: t('messages.guestPerk2') },
+              { icon: <Clock size={18} color="#25408D" />, label: t('messages.guestPerk3') },
+            ].map((row, idx) => (
+              <View key={idx} style={s.guestPerkRow}>
+                <View style={s.guestPerkIcon}>{row.icon}</View>
+                <Text style={s.guestPerkText}>{row.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={s.guestActions}>
+            <Pressable
+              style={({ pressed }) => [s.guestPrimaryBtn, pressed && { backgroundColor: '#1f2663' }]}
+              onPress={onLoginPress}
+            >
+              <Text style={s.guestPrimaryBtnText}>{t('messages.guestLoginCta')}</Text>
+              <ChevronRight size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
         </View>
       </View>
     );
@@ -235,4 +265,39 @@ const s = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80, gap: 8, paddingHorizontal: 20 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#374151' },
   emptyDesc: { fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
+
+  guestScroll: { flex: 1, paddingHorizontal: 24, paddingTop: 32 },
+  guestHero: { alignItems: 'center', marginBottom: 28 },
+  guestIconRing: {
+    width: 88, height: 88, borderRadius: 44,
+    backgroundColor: '#EBF0FF', alignItems: 'center', justifyContent: 'center',
+    marginBottom: 18,
+  },
+  guestIconCircle: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#25408D', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  guestTitle: { fontSize: 22, fontWeight: '800', color: '#111827', textAlign: 'center' },
+  guestDesc: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginTop: 8, lineHeight: 20, maxWidth: 280 },
+
+  guestPerks: { gap: 12, marginBottom: 28 },
+  guestPerkRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#F9FAFB', borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: '#F3F4F6',
+  },
+  guestPerkIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#EBF0FF', alignItems: 'center', justifyContent: 'center',
+  },
+  guestPerkText: { flex: 1, fontSize: 13, color: '#374151', fontWeight: '500', lineHeight: 18 },
+
+  guestActions: { gap: 10, marginTop: 'auto', marginBottom: 24 },
+  guestPrimaryBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#25408D', borderRadius: 14, paddingVertical: 16,
+  },
+  guestPrimaryBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 });
